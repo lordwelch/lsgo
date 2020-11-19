@@ -12,7 +12,7 @@ import (
 )
 
 type XMLMarshaler interface {
-	MarshalXML2(e *xml.Encoder, start *xml.StartElement) error
+	MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error
 }
 
 type TranslatedString struct {
@@ -21,7 +21,7 @@ type TranslatedString struct {
 	Handle  string
 }
 
-func (ts TranslatedString) MarshalXML2(e *xml.Encoder, start *xml.StartElement) error {
+func (ts TranslatedString) MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error {
 	start.Attr = append(start.Attr,
 		xml.Attr{
 			Name:  xml.Name{Local: "handle"},
@@ -91,6 +91,47 @@ func (v Vec) String() string {
 		b.WriteString(strconv.FormatFloat(float64(x), 'G', 7, 32))
 	}
 	return b.String()[1:]
+}
+
+func (v Vec) MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error {
+	switch Type {
+	case DT_Mat2, DT_Mat3, DT_Mat3x4, DT_Mat4x3, DT_Mat4:
+		b := &strings.Builder{}
+		for i, x := range v {
+			if x < 0 {
+				x = float32(roundFloat(float64(x), 2))
+			}
+			if x == 0 {
+				x = 0
+			}
+			fmt.Fprintf(b, "% .2f", x)
+			ii, err := Type.GetColumns()
+			if err != nil {
+				return err
+			}
+			if (i % ii) == ii-1 {
+				b.WriteString(" \r\n")
+			} else {
+				b.WriteString(" ")
+			}
+		}
+		// fmt.Fprintln(os.Stderr, b.String()[1:])
+		start.Attr = append(start.Attr,
+			xml.Attr{
+				Name:  xml.Name{Local: "value"},
+				Value: b.String(),
+			},
+		)
+
+	default:
+		start.Attr = append(start.Attr,
+			xml.Attr{
+				Name:  xml.Name{Local: "value"},
+				Value: v.String(),
+			},
+		)
+	}
+	return nil
 }
 
 type DataType int
@@ -232,7 +273,7 @@ func (na NodeAttribute) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 		t,
 	)
 	if v, ok := na.Value.(XMLMarshaler); ok {
-		v.MarshalXML2(e, &start)
+		v.MarshalXML2(e, &start, na.Type)
 	} else {
 		start.Attr = append(start.Attr,
 			xml.Attr{
@@ -258,7 +299,13 @@ func (na NodeAttribute) String() string {
 		}
 		return fmt.Sprint(na.Value)
 
-	case DT_Float, DT_Double:
+	case DT_Double:
+		if na.Value == 0 {
+			na.Value = 0
+		}
+		return fmt.Sprintf("%.15G", na.Value)
+
+	case DT_Float:
 		if na.Value == 0 {
 			na.Value = 0
 		}
@@ -270,7 +317,11 @@ func (na NodeAttribute) String() string {
 }
 
 func (na NodeAttribute) GetRows() (int, error) {
-	switch na.Type {
+	return na.Type.GetRows()
+}
+
+func (dt DataType) GetRows() (int, error) {
+	switch dt {
 	case DT_IVec2, DT_IVec3, DT_IVec4, DT_Vec2, DT_Vec3, DT_Vec4:
 		return 1, nil
 
@@ -289,7 +340,11 @@ func (na NodeAttribute) GetRows() (int, error) {
 }
 
 func (na NodeAttribute) GetColumns() (int, error) {
-	switch na.Type {
+	return na.Type.GetColumns()
+}
+
+func (dt DataType) GetColumns() (int, error) {
+	switch dt {
 	case DT_IVec2, DT_Vec2, DT_Mat2:
 		return 2, nil
 

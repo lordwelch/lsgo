@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 
+	"github.com/go-kit/kit/log"
 	"github.com/google/uuid"
-	"github.com/pierrec/lz4"
+	"github.com/pierrec/lz4/v4"
 )
 
 func reverse(nums []byte) {
@@ -80,31 +82,43 @@ func MakeCompressionFlags(method CompressionMethod, level CompressionLevel) int 
 	return flags | int(level)
 }
 
-func Decompress(compressed io.Reader, compressionFlags byte, chunked bool) io.ReadSeeker {
+func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byte, chunked bool) io.ReadSeeker {
 	switch CompressionMethod(compressionFlags & 0x0f) {
 	case CMNone:
+		// logger.Println("No compression")
 		if v, ok := compressed.(io.ReadSeeker); ok {
 			return v
 		}
 		panic(errors.New("compressed must be an io.ReadSeeker if there is no compression"))
 
 	case CMZlib:
+		// logger.Println("zlib compression")
 		zr, _ := zlib.NewReader(compressed)
 		v, _ := ioutil.ReadAll(zr)
 		return bytes.NewReader(v)
 
 	case CMLZ4:
 		if chunked {
+			// logger.Println("lz4 stream compressed")
 			zr := lz4.NewReader(compressed)
-			v, _ := ioutil.ReadAll(zr)
-			return bytes.NewReader(v)
+			p := make([]byte, uncompressedSize)
+			_, err := zr.Read(p)
+			if err != nil {
+				panic(err)
+			}
+			return bytes.NewReader(p)
 		} else {
-			panic(errors.New("not implemented"))
-			// src, _ := ioutil.ReadAll(compressed)
-			// dst := make([]byte, decompressedSize)
-			// lz4.UncompressBlock(src, dst)
+			// logger.Println("lz4 block compressed")
+			// panic(errors.New("not implemented"))
+			src, _ := ioutil.ReadAll(compressed)
+			// logger.Println(len(src))
+			dst := make([]byte, uncompressedSize*2)
+			_, err := lz4.UncompressBlock(src, dst)
+			if err != nil {
+				panic(err)
+			}
 
-			// return bytes.NewReader(dst)
+			return bytes.NewReader(dst)
 		}
 
 	default:
@@ -127,58 +141,115 @@ func ReadCString(r io.Reader, length int) (string, error) {
 	return string(buf[:clen(buf)]), nil
 }
 
-func ReadAttribute(r io.Reader, name string, DT DataType) (NodeAttribute, error) {
+func roundFloat(x float64, prec int) float64 {
+	var rounder float64
+	pow := math.Pow(10, float64(prec))
+	intermed := x * pow
+	_, frac := math.Modf(intermed)
+	intermed += .5
+	x = .5
+	if frac < 0.0 {
+		x = -.5
+		intermed -= 1
+	}
+	if frac >= x {
+		rounder = math.Ceil(intermed)
+	} else {
+		rounder = math.Floor(intermed)
+	}
+
+	return rounder / pow
+}
+
+func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log.Logger) (NodeAttribute, error) {
 	var (
 		attr = NodeAttribute{
 			Type: DT,
 			Name: name,
 		}
 		err error
+
+		pos int64
+		n   int
 	)
+	pos, err = r.Seek(0, io.SeekCurrent)
+
 	switch DT {
 	case DT_None:
+
+		l.Log("member", name, "read", length, "start position", pos, "value", nil)
+		pos += int64(length)
+
 		return attr, nil
 
 	case DT_Byte:
 		p := make([]byte, 1)
-		_, err = r.Read(p)
+		n, err = r.Read(p)
 		attr.Value = p[0]
+
+		l.Log("member", name, "read", n, "start position", pos, "value", attr.Value)
+		pos += int64(n)
+
 		return attr, err
 
 	case DT_Short:
 		var v int16
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_UShort:
 		var v uint16
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_Int:
 		var v int32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_UInt:
 		var v uint32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_Float:
 		var v float32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_Double:
 		var v float64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_IVec2, DT_IVec3, DT_IVec4:
@@ -197,6 +268,10 @@ func ReadAttribute(r io.Reader, name string, DT DataType) (NodeAttribute, error)
 			vec[i] = int(v)
 		}
 		attr.Value = vec
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, nil
 
 	case DT_Vec2, DT_Vec3, DT_Vec4:
@@ -215,59 +290,103 @@ func ReadAttribute(r io.Reader, name string, DT DataType) (NodeAttribute, error)
 			vec[i] = v
 		}
 		attr.Value = vec
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, nil
 
 	case DT_Mat2, DT_Mat3, DT_Mat3x4, DT_Mat4x3, DT_Mat4:
-		// int columns = attr.GetColumns();
-		// int rows = attr.GetRows();
-		// var mat = new Matrix(rows, columns);
-		// attr.Value = mat;
+		var (
+			row int
+			col int
+		)
+		col, err = attr.GetColumns()
+		if err != nil {
+			return attr, err
+		}
+		row, err = attr.GetRows()
+		if err != nil {
+			return attr, err
+		}
+		vec := make(Vec, col*row)
 
-		// for (int col = 0; col < columns; col++)                        {
-		//     for (int row = 0; row < rows; row++)                            {
-		//         mat[row, col] = reader.ReadSingle();
-		//     }
-		// }
-		return attr, errors.New("not implemented")
+		for c := 0; c < col; c++ {
+			for ro := 0; ro < row; ro++ {
+				var v float32
+				err = binary.Read(r, binary.LittleEndian, &v)
+				if err != nil {
+					return attr, err
+				}
+				vec[ro*col+c] = v
+			}
+		}
+		attr.Value = vec
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
+		return attr, nil
 
 	case DT_Bool:
 		var v bool
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_ULongLong:
 		var v uint64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_Long, DT_Int64:
 		var v int64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_Int8:
 		var v int8
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
+
+		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
+		pos += int64(length)
+
 		return attr, err
 
 	case DT_UUID:
 		var v uuid.UUID
 		p := make([]byte, 16)
-		r.Read(p)
+		n, err = r.Read(p)
 		reverse(p[:4])
 		reverse(p[4:6])
 		reverse(p[6:8])
 		v, err = uuid.FromBytes(p)
 		attr.Value = v
+
+		l.Log("member", name, "read", n, "start position", pos, "value", attr.Value)
+		pos += int64(n)
+
 		return attr, err
 
 	default:
 		// Strings are serialized differently for each file format and should be
 		// handled by the format-specific ReadAttribute()
+		// pretty.Log(attr)
 		return attr, fmt.Errorf("ReadAttribute() not implemented for type %v", DT)
 	}
 
