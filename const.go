@@ -1,5 +1,7 @@
 package lslib
 
+import "errors"
+
 type FileVersion uint32
 
 const (
@@ -44,4 +46,8 @@ const (
 	FastCompression    CompressionLevel = 0x10
 	DefaultCompression CompressionLevel = 0x20
 	MaxCompression     CompressionLevel = 0x40
+)
+
+var (
+	ErrVectorTooBig = errors.New("the vector is too big cannot marshal to an xml element")
 )

@@ -9,10 +9,12 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"gonum.org/v1/gonum/mat"
 )
 
+// XMLMarshaler has a pointer to start in order to append multiple attributes to the xml element
 type XMLMarshaler interface {
-	MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error
+	MarshalXML(e *xml.Encoder, start *xml.StartElement) error
 }
 
 type TranslatedString struct {
@@ -21,7 +23,7 @@ type TranslatedString struct {
 	Handle  string
 }
 
-func (ts TranslatedString) MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error {
+func (ts TranslatedString) MarshalXML(e *xml.Encoder, start *xml.StartElement) error {
 	start.Attr = append(start.Attr,
 		xml.Attr{
 			Name:  xml.Name{Local: "handle"},
@@ -79,58 +81,58 @@ func (i Ivec) String() string {
 	return b.String()[1:]
 }
 
-type Vec []float32
+type Vec []float64
 
-func (v Vec) String() string {
-	b := &strings.Builder{}
-	for _, x := range v {
-		b.WriteString(" ")
-		if x == 0 {
-			x = 0
-		}
-		b.WriteString(strconv.FormatFloat(float64(x), 'G', 7, 32))
+type Mat mat.Dense
+
+func (m Mat) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	var (
+		M = mat.Dense(m)
+		v []float64
+	)
+	rows, cols := M.Dims()
+	if rows == cols {
+		start.Name.Local = "mat" + strconv.Itoa(rows)
+	} else {
+		start.Name.Local = "mat" + strconv.Itoa(rows) + "x" + strconv.Itoa(cols)
 	}
-	return b.String()[1:]
+	e.EncodeToken(start)
+	for i := 0; i < rows; i++ {
+		v = M.RawRowView(i)
+		n := Vec(v)
+		e.Encode(n)
+	}
+	e.EncodeToken(xml.EndElement{Name: start.Name})
+	return nil
 }
 
-func (v Vec) MarshalXML2(e *xml.Encoder, start *xml.StartElement, Type DataType) error {
-	switch Type {
-	case DT_Mat2, DT_Mat3, DT_Mat3x4, DT_Mat4x3, DT_Mat4:
-		b := &strings.Builder{}
-		for i, x := range v {
-			if x < 0 {
-				x = float32(roundFloat(float64(x), 2))
-			}
-			if x == 0 {
-				x = 0
-			}
-			fmt.Fprintf(b, "% .2f", x)
-			ii, err := Type.GetColumns()
-			if err != nil {
-				return err
-			}
-			if (i % ii) == ii-1 {
-				b.WriteString(" \r\n")
-			} else {
-				b.WriteString(" ")
-			}
-		}
-		// fmt.Fprintln(os.Stderr, b.String()[1:])
-		start.Attr = append(start.Attr,
-			xml.Attr{
-				Name:  xml.Name{Local: "value"},
-				Value: b.String(),
-			},
-		)
+func (v Vec) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	var name xml.Name
+	for i := 0; i < len(v); i++ {
+		switch i {
+		case 0:
+			name.Local = "x"
+			// start.Name = "float1"
+		case 1:
+			name.Local = "y"
+			start.Name.Local = "float2"
+		case 2:
+			name.Local = "z"
+			start.Name.Local = "float3"
+		case 3:
+			name.Local = "w"
+			start.Name.Local = "float4"
 
-	default:
-		start.Attr = append(start.Attr,
-			xml.Attr{
-				Name:  xml.Name{Local: "value"},
-				Value: v.String(),
-			},
-		)
+		default:
+			return ErrVectorTooBig
+		}
+		start.Attr = append(start.Attr, xml.Attr{
+			Name:  name,
+			Value: strconv.FormatFloat(v[i], 'f', -1, 32),
+		})
 	}
+	e.EncodeToken(start)
+	e.EncodeToken(xml.EndElement{Name: start.Name})
 	return nil
 }
 
@@ -272,9 +274,12 @@ func (na NodeAttribute) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 		},
 		t,
 	)
-	if v, ok := na.Value.(XMLMarshaler); ok {
-		v.MarshalXML2(e, &start, na.Type)
-	} else {
+	v, MarshalXML2 := na.Value.(XMLMarshaler)
+	v1, MarshalXML := na.Value.(xml.Marshaler)
+	if MarshalXML2 {
+		v.MarshalXML(e, &start)
+	}
+	if !(MarshalXML || MarshalXML2) {
 		start.Attr = append(start.Attr,
 			xml.Attr{
 				Name:  xml.Name{Local: "value"},
@@ -284,6 +289,11 @@ func (na NodeAttribute) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 	}
 
 	e.EncodeToken(start)
+
+	if MarshalXML {
+		e.EncodeElement(v1, xml.StartElement{Name: xml.Name{Local: na.Type.String()}})
+	}
+
 	e.EncodeToken(xml.EndElement{
 		Name: start.Name,
 	})
@@ -300,16 +310,18 @@ func (na NodeAttribute) String() string {
 		return fmt.Sprint(na.Value)
 
 	case DT_Double:
+		v := na.Value.(float64)
 		if na.Value == 0 {
 			na.Value = 0
 		}
-		return fmt.Sprintf("%.15G", na.Value)
+		return strconv.FormatFloat(v, 'f', -1, 64)
 
 	case DT_Float:
+		v := na.Value.(float32)
 		if na.Value == 0 {
 			na.Value = 0
 		}
-		return fmt.Sprintf("%.7G", na.Value)
+		return strconv.FormatFloat(float64(v), 'f', -1, 32)
 
 	default:
 		return fmt.Sprint(na.Value)

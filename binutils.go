@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/google/uuid"
 	"github.com/pierrec/lz4/v4"
+	"gonum.org/v1/gonum/mat"
 )
 
 func reverse(nums []byte) {
@@ -287,7 +288,7 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 			if err != nil {
 				return attr, err
 			}
-			vec[i] = v
+			vec[i] = float64(v)
 		}
 		attr.Value = vec
 
@@ -318,10 +319,10 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 				if err != nil {
 					return attr, err
 				}
-				vec[ro*col+c] = v
+				vec[ro*col+c] = float64(v)
 			}
 		}
-		attr.Value = vec
+		attr.Value = (*Mat)(mat.NewDense(row, col, []float64(vec)))
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
 		pos += int64(length)

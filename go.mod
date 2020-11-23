@@ -9,4 +9,5 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/kr/pretty v0.2.1
 	github.com/pierrec/lz4/v4 v4.1.1
+	gonum.org/v1/gonum v0.8.1
 )
