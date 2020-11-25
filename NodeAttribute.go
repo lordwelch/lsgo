@@ -33,10 +33,6 @@ func (ts TranslatedString) MarshalXML(e *xml.Encoder, start *xml.StartElement) e
 			Name:  xml.Name{Local: "version"},
 			Value: strconv.Itoa(int(ts.Version)),
 		},
-		// xml.Attr{
-		// 	Name:  xml.Name{Local: "value"},
-		// 	Value: ts.Value,
-		// },
 	)
 	return nil
 }

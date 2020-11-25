@@ -49,5 +49,7 @@ const (
 )
 
 var (
-	ErrVectorTooBig = errors.New("the vector is too big cannot marshal to an xml element")
+	ErrVectorTooBig    = errors.New("the vector is too big cannot marshal to an xml element")
+	ErrInvalidNameKey  = errors.New("invalid name key")
+	ErrKeyDoesNotMatch = errors.New("key for this node does not match")
 )
