@@ -59,7 +59,7 @@ func (n Node) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	if n.RegionName != "" {
 		tmp := xml.StartElement{
 			Name: R,
-			Attr: []xml.Attr{{Name: I, Value: n.Name}},
+			Attr: []xml.Attr{{Name: I, Value: n.RegionName}},
 		}
 		e.EncodeToken(tmp)
 	}
