@@ -153,6 +153,7 @@ func marshalXML(l *lslib.Resource) (string, error) {
 	n = strings.ReplaceAll(n, "false", "False")
 	n = strings.ReplaceAll(n, "true", "True")
 	n = strings.ReplaceAll(n, "&#39;", "'")
+	n = strings.ReplaceAll(n, "&#34;", "&quot;")
 	return n, nil
 }
 
