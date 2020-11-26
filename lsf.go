@@ -1,7 +1,6 @@
 package lslib
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -52,64 +51,48 @@ func (f filter) Log(keyvals ...interface{}) error {
 }
 
 type LSFHeader struct {
-	/// summary
-	/// LSOF file signature
-	/// /summary
+	// LSOF file signature
 	Signature [4]byte
 
-	/// summary
-	/// Version of the LSOF file D:OS EE is version 1/2, D:OS 2 is version 3
-	/// /summary
+	// Version of the LSOF file D:OS EE is version 1/2, D:OS 2 is version 3
 	Version FileVersion
-	/// summary
-	/// Possibly version number? (major, minor, rev, build)
-	/// /summary
+
+	// Possibly version number? (major, minor, rev, build)
 	EngineVersion uint32
-	/// summary
-	/// Total uncompressed size of the string hash table
-	/// /summary
+
+	// Total uncompressed size of the string hash table
 	StringsUncompressedSize uint32
-	/// summary
-	/// Compressed size of the string hash table
-	/// /summary
+
+	// Compressed size of the string hash table
 	StringsSizeOnDisk uint32
-	/// summary
-	/// Total uncompressed size of the node list
-	/// /summary
+
+	// Total uncompressed size of the node list
 	NodesUncompressedSize uint32
-	/// summary
-	/// Compressed size of the node list
-	/// /summary
+
+	// Compressed size of the node list
 	NodesSizeOnDisk uint32
-	/// summary
-	/// Total uncompressed size of the attribute list
-	/// /summary
+
+	// Total uncompressed size of the attribute list
 	AttributesUncompressedSize uint32
-	/// summary
-	/// Compressed size of the attribute list
-	/// /summary
+
+	// Compressed size of the attribute list
 	AttributesSizeOnDisk uint32
-	/// summary
-	/// Total uncompressed size of the raw value buffer
-	/// /summary
+
+	// Total uncompressed size of the raw value buffer
 	ValuesUncompressedSize uint32
-	/// summary
-	/// Compressed size of the raw value buffer
-	/// /summary
+
+	// Compressed size of the raw value buffer
 	ValuesSizeOnDisk uint32
-	/// summary
-	/// Compression method and level used for the string, node, attribute and value buffers.
-	/// Uses the same format as packages (see BinUtils.MakeCompressionFlags)
-	/// /summary
+	// summary
+
+	// Uses the same format as packages (see BinUtils.MakeCompressionFlags)
 	CompressionFlags byte
-	/// summary
-	/// Possibly unused, always 0
-	/// /summary
+
+	// Possibly unused, always 0
 	Unknown2 byte
 	Unknown3 uint16
-	/// summary
-	/// Extended node/attribute format indicator, 0 for V2, 0/1 for V3
-	/// /summary
+
+	// Extended node/attribute format indicator, 0 for V2, 0/1 for V3
 	Extended uint32
 }
 
@@ -256,28 +239,24 @@ func (lsfh LSFHeader) IsCompressed() bool {
 type NodeEntry struct {
 	Long bool
 
-	/// summary
-	/// Name of this node
-	/// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
-	/// /summary
+	// summary
+
+	// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
 	NameHashTableIndex uint32
 
-	/// summary
-	/// Index of the first attribute of this node
-	/// (-1: node has no attributes)
-	/// /summary
+	// summary
+
+	// (-1: node has no attributes)
 	FirstAttributeIndex int32
 
-	/// summary
-	/// Index of the parent node
-	/// (-1: this node is a root region)
-	/// /summary
+	// summary
+
+	// (-1: this node is a root region)
 	ParentIndex int32
 
-	/// summary
-	/// Index of the next sibling of this node
-	/// (-1: this is the last node)
-	/// /summary
+	// summary
+
+	// (-1: this is the last node)
 	NextSiblingIndex int32
 }
 
@@ -378,65 +357,49 @@ func (ne NodeEntry) NameOffset() int {
 	return int(ne.NameHashTableIndex & 0xffff)
 }
 
-/// summary
-/// Processed node information for a node in the LSF file
-/// /summary
+// Processed node information for a node in the LSF file
 type NodeInfo struct {
-	/// summary
-	/// Index of the parent node
-	/// (-1: this node is a root region)
-	/// /summary
+	// summary
+
+	// (-1: this node is a root region)
 	ParentIndex int
 
-	/// summary
-	/// Index into name hash table
-	/// /summary
+	// Index into name hash table
 	NameIndex int
 
-	/// summary
-	/// Offset in hash chain
-	/// /summary
+	// Offset in hash chain
 	NameOffset int
 
-	/// summary
-	/// Index of the first attribute of this node
-	/// (-1: node has no attributes)
-	/// /summary
+	// summary
+
+	// (-1: node has no attributes)
 	FirstAttributeIndex int
 }
 
-/// summary
-/// attribute extension in the LSF file
-/// /summary
+// attribute extension in the LSF file
 type AttributeEntry struct {
 	Long bool
-	/// summary
-	/// Name of this attribute
-	/// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
-	/// /summary
+	// summary
+
+	// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
 	NameHashTableIndex uint32
 
-	/// summary
-	/// 6-bit LSB: Type of this attribute (see NodeAttribute.DataType)
-	/// 26-bit MSB: Length of this attribute
-	/// /summary
+	// summary
+
+	// 26-bit MSB: Length of this attribute
 	TypeAndLength uint32
 
-	/// summary
-	/// Index of the node that this attribute belongs to
-	/// Note: These indexes are assigned seemingly arbitrarily, and are not neccessarily indices into the node list
-	/// /summary
+	// summary
+
+	// Note: These indexes are assigned seemingly arbitrarily, and are not necessarily indices into the node list
 	NodeIndex int32
 
-	/// summary
-	/// Index of the node that this attribute belongs to
-	/// Note: These indexes are assigned seemingly arbitrarily, and are not neccessarily indices into the node list
-	/// /summary
+	// summary
+
+	// Note: These indexes are assigned seemingly arbitrarily, and are not necessarily indices into the node list
 	NextAttributeIndex int32
 
-	/// <summary>
-	/// Absolute position of attribute value in the value stream
-	/// </summary>
+	// Absolute position of attribute value in the value stream
 	Offset uint32
 }
 
@@ -529,30 +492,22 @@ func (ae *AttributeEntry) readLong(r io.ReadSeeker) error {
 	return nil
 }
 
-/// summary
-/// Index into name hash table
-/// /summary
+// Index into name hash table
 func (ae AttributeEntry) NameIndex() int {
 	return int(ae.NameHashTableIndex >> 16)
 }
 
-/// summary
-/// Offset in hash chain
-/// /summary
+// Offset in hash chain
 func (ae AttributeEntry) NameOffset() int {
 	return int(ae.NameHashTableIndex & 0xffff)
 }
 
-/// summary
-/// Type of this attribute (see NodeAttribute.DataType)
-/// /summary
+// Type of this attribute (see NodeAttribute.DataType)
 func (ae AttributeEntry) TypeID() DataType {
 	return DataType(ae.TypeAndLength & 0x3f)
 }
 
-/// summary
-/// Length of this attribute
-/// /summary
+// Length of this attribute
 func (ae AttributeEntry) Len() int {
 	return int(ae.TypeAndLength >> 6)
 }
@@ -560,35 +515,24 @@ func (ae AttributeEntry) Len() int {
 type AttributeInfo struct {
 	V2 bool
 
-	/// summary
-	/// Index into name hash table
-	/// /summary
+	// Index into name hash table
 	NameIndex int
-	/// summary
-	/// Offset in hash chain
-	/// /summary
-	NameOffset int
-	/// summary
-	/// Type of this attribute (see NodeAttribute.DataType)
-	/// /summary
-	TypeId DataType
-	/// summary
-	/// Length of this attribute
-	/// /summary
-	Length uint
-	/// summary
-	/// Absolute position of attribute data in the values section
-	/// /summary
-	DataOffset uint
-	/// summary
-	/// Index of the next attribute in this node
-	/// (-1: this is the last attribute)
-	/// /summary
-	NextAttributeIndex int
-}
 
-type LSFReader struct {
-	data *bufio.Reader
+	// Offset in hash chain
+	NameOffset int
+
+	// Type of this attribute (see NodeAttribute.DataType)
+	TypeID DataType
+
+	// Length of this attribute
+	Length uint
+
+	// Absolute position of attribute data in the values section
+	DataOffset uint
+	// summary
+
+	// (-1: this is the last attribute)
+	NextAttributeIndex int
 }
 
 // extract to lsf package
@@ -614,7 +558,7 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 	pos += int64(n)
 
 	names = make([][]string, int(numHashEntries))
-	for i, _ := range names {
+	for i := range names {
 
 		var numStrings uint16
 
@@ -624,7 +568,7 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 		pos += int64(n)
 
 		var hash = make([]string, int(numStrings))
-		for x, _ := range hash {
+		for x := range hash {
 			var (
 				nameLen uint16
 				name    []byte
@@ -686,10 +630,8 @@ func readNodeInfo(r io.ReadSeeker, longNodes bool) ([]NodeInfo, error) {
 	return nodes[:len(nodes)-1], err
 }
 
-/// <summary>
-/// Reads the attribute headers for the LSOF resource
-/// </summary>
-/// <param name="s">Stream to read the attribute headers from</param>
+// Reads the attribute headers for the LSOF resource
+// <param name="s">Stream to read the attribute headers from</param>
 func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 	// var rawAttributes = new List<AttributeEntryV2>();
 
@@ -717,7 +659,7 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 		resolved := AttributeInfo{
 			NameIndex:          attribute.NameIndex(),
 			NameOffset:         attribute.NameOffset(),
-			TypeId:             attribute.TypeID(),
+			TypeID:             attribute.TypeID(),
 			Length:             uint(attribute.Len()),
 			DataOffset:         dataOffset,
 			NextAttributeIndex: nextAttrIndex,
@@ -730,7 +672,7 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 				attributes[indexOfLastAttr].NextAttributeIndex = index
 			}
 			// set the previous attribute of this node to the current attribute, we are done with it and at the end of the loop
-			dataOffset += uint(resolved.Length)
+			dataOffset += resolved.Length
 
 			prevAttributeRefs[int(attribute.NodeIndex)] = index
 		}
@@ -775,21 +717,17 @@ func (he HeaderError) Error() string {
 func ReadLSF(r io.ReadSeeker) (Resource, error) {
 	var (
 		err error
-		/// summary
-		/// Static string hash map
-		/// /summary
+
+		// Static string hash map
 		names [][]string
-		/// summary
-		/// Preprocessed list of nodes (structures)
-		/// /summary
+
+		// Preprocessed list of nodes (structures)
 		nodeInfo []NodeInfo
-		/// summary
-		/// Preprocessed list of node attributes
-		/// /summary
+
+		// Preprocessed list of node attributes
 		attributeInfo []AttributeInfo
-		/// summary
-		/// Node instances
-		/// /summary
+
+		// Node instances
 		nodeInstances []*Node
 	)
 	var (
@@ -799,7 +737,7 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 	)
 	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "file")
 	pos, err = r.Seek(0, io.SeekCurrent)
-	l.Log("member", "LSF header", "start position", pos)
+	l.Log("member", "header", "start position", pos)
 
 	hdr := &LSFHeader{}
 	err = hdr.Read(r)
@@ -922,10 +860,10 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		}
 	}
 
-	res.Metadata.MajorVersion = (hdr.EngineVersion & 0xf0000000) >> 28
-	res.Metadata.MinorVersion = (hdr.EngineVersion & 0xf000000) >> 24
+	res.Metadata.Major = (hdr.EngineVersion & 0xf0000000) >> 28
+	res.Metadata.Minor = (hdr.EngineVersion & 0xf000000) >> 24
 	res.Metadata.Revision = (hdr.EngineVersion & 0xff0000) >> 16
-	res.Metadata.BuildNumber = (hdr.EngineVersion & 0xffff)
+	res.Metadata.Build = (hdr.EngineVersion & 0xffff)
 
 	// pretty.Log(res)
 	return res, nil
@@ -934,11 +872,11 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 
 var valueStart int64
 
-func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attributeInfo []AttributeInfo, Version FileVersion, EngineVersion uint32) ([]*Node, error) {
+func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attributeInfo []AttributeInfo, version FileVersion, engineVersion uint32) ([]*Node, error) {
 	NodeInstances := make([]*Node, 0, len(nodeInfo))
 	for _, nodeInfo := range nodeInfo {
 		if nodeInfo.ParentIndex == -1 {
-			region, err := ReadNode(r, nodeInfo, names, attributeInfo, Version, EngineVersion)
+			region, err := ReadNode(r, nodeInfo, names, attributeInfo, version, engineVersion)
 
 			// pretty.Log(err, region)
 
@@ -949,7 +887,7 @@ func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attribu
 				return NodeInstances, err
 			}
 		} else {
-			node, err := ReadNode(r, nodeInfo, names, attributeInfo, Version, EngineVersion)
+			node, err := ReadNode(r, nodeInfo, names, attributeInfo, version, engineVersion)
 
 			// pretty.Log(err, node)
 
@@ -965,7 +903,7 @@ func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attribu
 	return NodeInstances, nil
 }
 
-func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []AttributeInfo, Version FileVersion, EngineVersion uint32) (Node, error) {
+func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []AttributeInfo, version FileVersion, engineVersion uint32) (Node, error) {
 	var (
 		node  = Node{}
 		index = ni.FirstAttributeIndex
@@ -993,7 +931,7 @@ func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []At
 				panic("shit")
 			}
 		}
-		v, err = ReadLSFAttribute(r, names[attribute.NameIndex][attribute.NameOffset], attribute.TypeId, attribute.Length, Version, EngineVersion)
+		v, err = ReadLSFAttribute(r, names[attribute.NameIndex][attribute.NameOffset], attribute.TypeID, attribute.Length, version, engineVersion)
 		node.Attributes = append(node.Attributes, v)
 		if err != nil {
 			return node, err
@@ -1005,13 +943,13 @@ func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []At
 	return node, nil
 }
 
-func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Version FileVersion, EngineVersion uint32) (NodeAttribute, error) {
+func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, version FileVersion, engineVersion uint32) (NodeAttribute, error) {
 	// LSF and LSB serialize the buffer types differently, so specialized
 	// code is added to the LSB and LSf serializers, and the common code is
 	// available in BinUtils.ReadAttribute()
 	var (
 		attr = NodeAttribute{
-			Type: DT,
+			Type: dt,
 			Name: name,
 		}
 		err error
@@ -1022,8 +960,8 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Ve
 	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "attribute")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
-	switch DT {
-	case DT_String, DT_Path, DT_FixedString, DT_LSString, DT_WString, DT_LSWString:
+	switch dt {
+	case DTString, DTPath, DTFixedString, DTLSString, DTWString, DTLSWString:
 		var v string
 		v, err = ReadCString(r, int(length))
 		attr.Value = v
@@ -1033,9 +971,9 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Ve
 
 		return attr, err
 
-	case DT_TranslatedString:
+	case DTTranslatedString:
 		var v TranslatedString
-		v, err = ReadTranslatedString(r, Version, EngineVersion)
+		v, err = ReadTranslatedString(r, version, engineVersion)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
@@ -1043,9 +981,9 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Ve
 
 		return attr, err
 
-	case DT_TranslatedFSString:
+	case DTTranslatedFSString:
 		var v TranslatedFSString
-		v, err = ReadTranslatedFSString(r, Version)
+		v, err = ReadTranslatedFSString(r, version)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
@@ -1053,7 +991,7 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Ve
 
 		return attr, err
 
-	case DT_ScratchBuffer:
+	case DTScratchBuffer:
 
 		v := make([]byte, length)
 		_, err = r.Read(v)
@@ -1065,21 +1003,37 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, DT DataType, length uint, Ve
 		return attr, err
 
 	default:
-		return ReadAttribute(r, name, DT, length, l)
+		return ReadAttribute(r, name, dt, length, l)
 	}
 }
 
-func ReadTranslatedString(r io.ReadSeeker, Version FileVersion, EngineVersion uint32) (TranslatedString, error) {
+func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion uint32) (TranslatedString, error) {
 	var (
 		str TranslatedString
 		err error
 	)
 
-	if Version >= VerBG3 || EngineVersion == 0x4000001d {
+	if version >= VerBG3 || engineVersion == 0x4000001d {
 		// logger.Println("decoding bg3 data")
 		var version uint16
-		/*err =*/ binary.Read(r, binary.LittleEndian, &version)
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
 		str.Version = version
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
+		if version == 0 {
+			str.Value, err = ReadCString(r, int(str.Version))
+			if err != nil {
+				return str, err
+			}
+			str.Version = 0
+		} else {
+			_, err = r.Seek(-2, io.SeekCurrent)
+		}
 	} else {
 		str.Version = 0
 
@@ -1098,7 +1052,6 @@ func ReadTranslatedString(r io.ReadSeeker, Version FileVersion, EngineVersion ui
 		if err != nil {
 			return str, err
 		}
-		// logger.Printf("value length: %d value: %s read length: %d len of v: %d", vlength, v, n, len(v))
 		str.Value = string(v)
 	}
 
@@ -1115,15 +1068,18 @@ func ReadTranslatedString(r io.ReadSeeker, Version FileVersion, EngineVersion ui
 	return str, nil
 }
 
-func ReadTranslatedFSString(r io.ReadSeeker, Version FileVersion) (TranslatedFSString, error) {
+func ReadTranslatedFSString(r io.ReadSeeker, version FileVersion) (TranslatedFSString, error) {
 	var (
 		str = TranslatedFSString{}
 		err error
 	)
 
-	if Version >= VerBG3 {
+	if version >= VerBG3 {
 		var version uint16
-		/*err =*/ binary.Read(r, binary.LittleEndian, &version)
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
 		str.Version = version
 	} else {
 		str.Version = 0
@@ -1132,8 +1088,10 @@ func ReadTranslatedFSString(r io.ReadSeeker, Version FileVersion) (TranslatedFSS
 			length int32
 		)
 
-		/*err =*/
-		binary.Read(r, binary.LittleEndian, &length)
+		err = binary.Read(r, binary.LittleEndian, &length)
+		if err != nil {
+			return str, err
+		}
 		str.Value, err = ReadCString(r, int(length))
 		if err != nil {
 			return str, err
@@ -1169,7 +1127,7 @@ func ReadTranslatedFSString(r io.ReadSeeker, Version FileVersion) (TranslatedFSS
 			return str, err
 		}
 
-		arg.String, err = ReadTranslatedFSString(r, Version)
+		arg.String, err = ReadTranslatedFSString(r, version)
 		if err != nil {
 			return str, err
 		}

@@ -8,11 +8,11 @@ import (
 type LSMetadata struct {
 	//public const uint CurrentMajorVersion = 33;
 
-	Timestamp    uint64 `xml:"-"`
-	MajorVersion uint32 `xml:"major,attr"`
-	MinorVersion uint32 `xml:"minor,attr"`
-	Revision     uint32 `xml:"revision,attr"`
-	BuildNumber  uint32 `xml:"build,attr"`
+	Timestamp uint64 `xml:"-"`
+	Major     uint32 `xml:"major,attr"`
+	Minor     uint32 `xml:"minor,attr"`
+	Revision  uint32 `xml:"revision,attr"`
+	Build     uint32 `xml:"build,attr"`
 }
 
 type format struct {

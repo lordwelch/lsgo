@@ -41,14 +41,17 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		if !fi.IsDir() {
+		switch {
+
+		case !fi.IsDir():
 			err = openLSF(v)
 			if err != nil && !errors.As(err, &lslib.HeaderError{}) {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
-		} else if *recurse {
-			filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
+
+		case *recurse:
+			_ = filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return nil
 				}
@@ -64,7 +67,8 @@ func main() {
 				}
 				return nil
 			})
-		} else {
+
+		default:
 			fmt.Fprintf(os.Stderr, "lsconvert: %s: Is a directory\n", v)
 			os.Exit(1)
 		}
@@ -75,11 +79,14 @@ func openLSF(filename string) error {
 		l   *lslib.Resource
 		err error
 		n   string
-		f   strwr
+		f   interface {
+			io.Writer
+			io.StringWriter
+		}
 	)
 	l, err = readLSF(filename)
 	if err != nil {
-		return fmt.Errorf("Reading LSF file %s failed: %w\n", filename, err)
+		return fmt.Errorf("reading LSF file %s failed: %w", filename, err)
 	}
 	if *printResource {
 		pretty.Log(l)
@@ -87,13 +94,13 @@ func openLSF(filename string) error {
 	if *printXML || *write {
 		n, err = marshalXML(l)
 		if err != nil {
-			return fmt.Errorf("Creating XML from LSF file %s failed: %w\n", filename, err)
+			return fmt.Errorf("creating XML from LSF file %s failed: %w", filename, err)
 		}
 
 		if *write {
 			f, err = os.OpenFile(filename, os.O_TRUNC|os.O_RDWR, 0o666)
 			if err != nil {
-				return fmt.Errorf("Writing XML from LSF file %s failed: %w\n", filename, err)
+				return fmt.Errorf("writing XML from LSF file %s failed: %w", filename, err)
 			}
 		} else if *printXML {
 			f = os.Stdout
@@ -102,7 +109,7 @@ func openLSF(filename string) error {
 		err = writeXML(f, n)
 		fmt.Fprint(f, "\n")
 		if err != nil {
-			return fmt.Errorf("Writing XML from LSF file %s failed: %w\n", filename, err)
+			return fmt.Errorf("writing XML from LSF file %s failed: %w", filename, err)
 		}
 	}
 	return nil
@@ -115,10 +122,10 @@ func readLSF(filename string) (*lslib.Resource, error) {
 		err error
 	)
 	f, err = os.Open(filename)
-	defer f.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
 	l, err = lslib.ReadLSF(f)
 	if err != nil {
@@ -149,12 +156,7 @@ func marshalXML(l *lslib.Resource) (string, error) {
 	return n, nil
 }
 
-type strwr interface {
-	io.Writer
-	io.StringWriter
-}
-
-func writeXML(f strwr, n string) error {
+func writeXML(f io.StringWriter, n string) error {
 	var (
 		err error
 	)

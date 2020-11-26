@@ -135,43 +135,43 @@ func (v Vec) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 type DataType int
 
 const (
-	DT_None DataType = iota
-	DT_Byte
-	DT_Short
-	DT_UShort
-	DT_Int
-	DT_UInt
-	DT_Float
-	DT_Double
-	DT_IVec2
-	DT_IVec3
-	DT_IVec4
-	DT_Vec2
-	DT_Vec3
-	DT_Vec4
-	DT_Mat2
-	DT_Mat3
-	DT_Mat3x4
-	DT_Mat4x3
-	DT_Mat4
-	DT_Bool
-	DT_String
-	DT_Path
-	DT_FixedString
-	DT_LSString
-	DT_ULongLong
-	DT_ScratchBuffer
+	DTNone DataType = iota
+	DTByte
+	DTShort
+	DTUShort
+	DTInt
+	DTUInt
+	DTFloat
+	DTDouble
+	DTIVec2
+	DTIVec3
+	DTIVec4
+	DTVec2
+	DTVec3
+	DTVec4
+	DTMat2
+	DTMat3
+	DTMat3x4
+	DTMat4x3
+	DTMat4
+	DTBool
+	DTString
+	DTPath
+	DTFixedString
+	DTLSString
+	DTULongLong
+	DTScratchBuffer
 	// Seems to be unused?
-	DT_Long
-	DT_Int8
-	DT_TranslatedString
-	DT_WString
-	DT_LSWString
-	DT_UUID
-	DT_Int64
-	DT_TranslatedFSString
+	DTLong
+	DTInt8
+	DTTranslatedString
+	DTWString
+	DTLSWString
+	DTUUID
+	DTInt64
+	DTTranslatedFSString
 	// Last supported datatype, always keep this one at the end
-	DT_Max = iota - 1
+	DTMax = iota - 1
 )
 
 func (dt *DataType) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
@@ -183,73 +183,73 @@ func (dt *DataType) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 
 func (dt DataType) String() string {
 	switch dt {
-	case DT_None:
+	case DTNone:
 		return "None"
-	case DT_Byte:
+	case DTByte:
 		return "uint8"
-	case DT_Short:
+	case DTShort:
 		return "int16"
-	case DT_UShort:
+	case DTUShort:
 		return "uint16"
-	case DT_Int:
+	case DTInt:
 		return "int32"
-	case DT_UInt:
+	case DTUInt:
 		return "uint32"
-	case DT_Float:
+	case DTFloat:
 		return "float"
-	case DT_Double:
+	case DTDouble:
 		return "double"
-	case DT_IVec2:
+	case DTIVec2:
 		return "ivec2"
-	case DT_IVec3:
+	case DTIVec3:
 		return "ivec3"
-	case DT_IVec4:
+	case DTIVec4:
 		return "ivec4"
-	case DT_Vec2:
+	case DTVec2:
 		return "fvec2"
-	case DT_Vec3:
+	case DTVec3:
 		return "fvec3"
-	case DT_Vec4:
+	case DTVec4:
 		return "fvec4"
-	case DT_Mat2:
+	case DTMat2:
 		return "mat2x2"
-	case DT_Mat3:
+	case DTMat3:
 		return "mat3x3"
-	case DT_Mat3x4:
+	case DTMat3x4:
 		return "mat3x4"
-	case DT_Mat4x3:
+	case DTMat4x3:
 		return "mat4x3"
-	case DT_Mat4:
+	case DTMat4:
 		return "mat4x4"
-	case DT_Bool:
+	case DTBool:
 		return "bool"
-	case DT_String:
+	case DTString:
 		return "string"
-	case DT_Path:
+	case DTPath:
 		return "path"
-	case DT_FixedString:
+	case DTFixedString:
 		return "FixedString"
-	case DT_LSString:
+	case DTLSString:
 		return "LSString"
-	case DT_ULongLong:
+	case DTULongLong:
 		return "uint64"
-	case DT_ScratchBuffer:
+	case DTScratchBuffer:
 		return "ScratchBuffer"
-	case DT_Long:
+	case DTLong:
 		return "old_int64"
-	case DT_Int8:
+	case DTInt8:
 		return "int8"
-	case DT_TranslatedString:
+	case DTTranslatedString:
 		return "TranslatedString"
-	case DT_WString:
+	case DTWString:
 		return "WString"
-	case DT_LSWString:
+	case DTLSWString:
 		return "LSWString"
-	case DT_UUID:
+	case DTUUID:
 		return "guid"
-	case DT_Int64:
+	case DTInt64:
 		return "int64"
-	case DT_TranslatedFSString:
+	case DTTranslatedFSString:
 		return "TranslatedFSString"
 	}
 	return ""
@@ -298,21 +298,21 @@ func (na NodeAttribute) MarshalXML(e *xml.Encoder, start xml.StartElement) error
 
 func (na NodeAttribute) String() string {
 	switch na.Type {
-	case DT_ScratchBuffer:
+	case DTScratchBuffer:
 		// ScratchBuffer is a special case, as its stored as byte[] and ToString() doesn't really do what we want
 		if value, ok := na.Value.([]byte); ok {
 			return base64.StdEncoding.EncodeToString(value)
 		}
 		return fmt.Sprint(na.Value)
 
-	case DT_Double:
+	case DTDouble:
 		v := na.Value.(float64)
 		if na.Value == 0 {
 			na.Value = 0
 		}
 		return strconv.FormatFloat(v, 'f', -1, 64)
 
-	case DT_Float:
+	case DTFloat:
 		v := na.Value.(float32)
 		if na.Value == 0 {
 			na.Value = 0
@@ -330,20 +330,20 @@ func (na NodeAttribute) GetRows() (int, error) {
 
 func (dt DataType) GetRows() (int, error) {
 	switch dt {
-	case DT_IVec2, DT_IVec3, DT_IVec4, DT_Vec2, DT_Vec3, DT_Vec4:
+	case DTIVec2, DTIVec3, DTIVec4, DTVec2, DTVec3, DTVec4:
 		return 1, nil
 
-	case DT_Mat2:
+	case DTMat2:
 		return 2, nil
 
-	case DT_Mat3, DT_Mat3x4:
+	case DTMat3, DTMat3x4:
 		return 3, nil
 
-	case DT_Mat4x3, DT_Mat4:
+	case DTMat4x3, DTMat4:
 		return 4, nil
 
 	default:
-		return 0, errors.New("Data type does not have rows")
+		return 0, errors.New("data type does not have rows")
 	}
 }
 
@@ -353,23 +353,23 @@ func (na NodeAttribute) GetColumns() (int, error) {
 
 func (dt DataType) GetColumns() (int, error) {
 	switch dt {
-	case DT_IVec2, DT_Vec2, DT_Mat2:
+	case DTIVec2, DTVec2, DTMat2:
 		return 2, nil
 
-	case DT_IVec3, DT_Vec3, DT_Mat3, DT_Mat4x3:
+	case DTIVec3, DTVec3, DTMat3, DTMat4x3:
 		return 3, nil
 
-	case DT_IVec4, DT_Vec4, DT_Mat3x4, DT_Mat4:
+	case DTIVec4, DTVec4, DTMat3x4, DTMat4:
 		return 4, nil
 
 	default:
-		return 0, errors.New("Data type does not have columns")
+		return 0, errors.New("data type does not have columns")
 	}
 }
 
 func (na NodeAttribute) IsNumeric() bool {
 	switch na.Type {
-	case DT_Byte, DT_Short, DT_Int, DT_UInt, DT_Float, DT_Double, DT_ULongLong, DT_Long, DT_Int8:
+	case DTByte, DTShort, DTInt, DTUInt, DTFloat, DTDouble, DTULongLong, DTLong, DTInt8:
 		return true
 	default:
 		return false
@@ -390,58 +390,62 @@ func (na *NodeAttribute) FromString(str string) error {
 	)
 
 	switch na.Type {
-	case DT_None:
+	case DTNone:
 		// This is a null type, cannot have a value
 
-	case DT_Byte:
+	case DTByte:
 		na.Value = []byte(str)
 
-	case DT_Short:
+	case DTShort:
 
 		na.Value, err = strconv.ParseInt(str, 0, 16)
 		if err != nil {
 			return err
 		}
 
-	case DT_UShort:
+	case DTUShort:
 		na.Value, err = strconv.ParseUint(str, 0, 16)
 		if err != nil {
 			return err
 		}
 
-	case DT_Int:
+	case DTInt:
 		na.Value, err = strconv.ParseInt(str, 0, 32)
 		if err != nil {
 			return err
 		}
 
-	case DT_UInt:
+	case DTUInt:
 		na.Value, err = strconv.ParseUint(str, 0, 16)
 		if err != nil {
 			return err
 		}
 
-	case DT_Float:
+	case DTFloat:
 		na.Value, err = strconv.ParseFloat(str, 32)
 		if err != nil {
 			return err
 		}
 
-	case DT_Double:
+	case DTDouble:
 		na.Value, err = strconv.ParseFloat(str, 64)
 		if err != nil {
 			return err
 		}
 
-	case DT_IVec2, DT_IVec3, DT_IVec4:
+	case DTIVec2, DTIVec3, DTIVec4:
+		var (
+			nums   []string
+			length int
+		)
 
-		nums := strings.Split(str, ".")
-		length, err := na.GetColumns()
+		nums = strings.Split(str, ".")
+		length, err = na.GetColumns()
 		if err != nil {
 			return err
 		}
 		if length != len(nums) {
-			return fmt.Errorf("A vector of length %d was expected, got %d", length, len(nums))
+			return fmt.Errorf("a vector of length %d was expected, got %d", length, len(nums))
 		}
 
 		vec := make([]int, length)
@@ -456,14 +460,18 @@ func (na *NodeAttribute) FromString(str string) error {
 
 		na.Value = vec
 
-	case DT_Vec2, DT_Vec3, DT_Vec4:
-		nums := strings.Split(str, ".")
-		length, err := na.GetColumns()
+	case DTVec2, DTVec3, DTVec4:
+		var (
+			nums   []string
+			length int
+		)
+		nums = strings.Split(str, ".")
+		length, err = na.GetColumns()
 		if err != nil {
 			return err
 		}
 		if length != len(nums) {
-			return fmt.Errorf("A vector of length %d was expected, got %d", length, len(nums))
+			return fmt.Errorf("a vector of length %d was expected, got %d", length, len(nums))
 		}
 
 		vec := make([]float64, length)
@@ -476,7 +484,7 @@ func (na *NodeAttribute) FromString(str string) error {
 
 		na.Value = vec
 
-	case DT_Mat2, DT_Mat3, DT_Mat3x4, DT_Mat4x3, DT_Mat4:
+	case DTMat2, DTMat3, DTMat3x4, DTMat4x3, DTMat4:
 		// var mat = Matrix.Parse(str);
 		// if (mat.cols != na.GetColumns() || mat.rows != na.GetRows()){
 		//     return errors.New("Invalid column/row count for matrix");
@@ -484,16 +492,16 @@ func (na *NodeAttribute) FromString(str string) error {
 		// value = mat;
 		return errors.New("not implemented")
 
-	case DT_Bool:
+	case DTBool:
 		na.Value, err = strconv.ParseBool(str)
 		if err != nil {
 			return err
 		}
 
-	case DT_String, DT_Path, DT_FixedString, DT_LSString, DT_WString, DT_LSWString:
+	case DTString, DTPath, DTFixedString, DTLSString, DTWString, DTLSWString:
 		na.Value = str
 
-	case DT_TranslatedString:
+	case DTTranslatedString:
 		// // We'll only set the value part of the translated string, not the TranslatedStringKey / Handle part
 		// // That can be changed separately via attribute.Value.Handle
 		// if (value == null)
@@ -501,7 +509,7 @@ func (na *NodeAttribute) FromString(str string) error {
 
 		// ((TranslatedString)value).Value = str;
 
-	case DT_TranslatedFSString:
+	case DTTranslatedFSString:
 		// // We'll only set the value part of the translated string, not the TranslatedStringKey / Handle part
 		// // That can be changed separately via attribute.Value.Handle
 		// if (value == null)
@@ -509,28 +517,31 @@ func (na *NodeAttribute) FromString(str string) error {
 
 		// ((TranslatedFSString)value).Value = str;
 
-	case DT_ULongLong:
+	case DTULongLong:
 		na.Value, err = strconv.ParseUint(str, 10, 64)
+		if err != nil {
+			return err
+		}
 
-	case DT_ScratchBuffer:
+	case DTScratchBuffer:
 		na.Value, err = base64.StdEncoding.DecodeString(str)
 		if err != nil {
 			return err
 		}
 
-	case DT_Long, DT_Int64:
+	case DTLong, DTInt64:
 		na.Value, err = strconv.ParseInt(str, 10, 64)
 		if err != nil {
 			return err
 		}
 
-	case DT_Int8:
+	case DTInt8:
 		na.Value, err = strconv.ParseInt(str, 10, 8)
 		if err != nil {
 			return err
 		}
 
-	case DT_UUID:
+	case DTUUID:
 		na.Value, err = uuid.Parse(str)
 		if err != nil {
 			return err
@@ -538,7 +549,7 @@ func (na *NodeAttribute) FromString(str string) error {
 
 	default:
 		// This should not happen!
-		return fmt.Errorf("FromString() not implemented for type %v", na.Type)
+		return fmt.Errorf("not implemented for type %v", na.Type)
 	}
 	return nil
 }

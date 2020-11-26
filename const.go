@@ -5,29 +5,19 @@ import "errors"
 type FileVersion uint32
 
 const (
-	/// <summary>
-	/// Initial version of the LSF format
-	/// </summary>
+	// Initial version of the LSF format
 	VerInitial FileVersion = iota + 1
 
-	/// <summary>
-	/// LSF version that added chunked compression for substreams
-	/// </summary>
+	// LSF version that added chunked compression for substreams
 	VerChunkedCompress
 
-	/// <summary>
-	/// LSF version that extended the node descriptors
-	/// </summary>
+	// LSF version that extended the node descriptors
 	VerExtendedNodes
 
-	/// <summary>
-	/// BG3 version, no changes found so far apart from version numbering
-	/// </summary>
+	// BG3 version, no changes found so far apart from version numbering
 	VerBG3
 
-	/// <summary>
-	/// Latest version supported by this library
-	/// </summary>
+	// Latest version supported by this library
 	MaxVersion = iota
 )
 

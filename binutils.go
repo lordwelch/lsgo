@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 
 	"github.com/go-kit/kit/log"
 	"github.com/google/uuid"
@@ -63,9 +62,9 @@ func CompressionFlagsToLevel(flags byte) CompressionLevel {
 		return MaxCompression
 
 	default:
-		panic(errors.New("Invalid compression flags"))
+		panic(errors.New("invalid compression flags"))
 	}
-	return 0
+	// return 0
 }
 
 func MakeCompressionFlags(method CompressionMethod, level CompressionLevel) int {
@@ -108,22 +107,21 @@ func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byt
 				panic(err)
 			}
 			return bytes.NewReader(p)
-		} else {
-			// logger.Println("lz4 block compressed")
-			// panic(errors.New("not implemented"))
-			src, _ := ioutil.ReadAll(compressed)
-			// logger.Println(len(src))
-			dst := make([]byte, uncompressedSize*2)
-			_, err := lz4.UncompressBlock(src, dst)
-			if err != nil {
-				panic(err)
-			}
-
-			return bytes.NewReader(dst)
+		}
+		// logger.Println("lz4 block compressed")
+		// panic(errors.New("not implemented"))
+		src, _ := ioutil.ReadAll(compressed)
+		// logger.Println(len(src))
+		dst := make([]byte, uncompressedSize*2)
+		_, err := lz4.UncompressBlock(src, dst)
+		if err != nil {
+			panic(err)
 		}
 
+		return bytes.NewReader(dst)
+
 	default:
-		panic(fmt.Errorf("No decompressor found for this format: %v", compressionFlags))
+		panic(fmt.Errorf("no decompressor found for this format: %v", compressionFlags))
 	}
 }
 
@@ -142,26 +140,6 @@ func ReadCString(r io.Reader, length int) (string, error) {
 	return string(buf[:clen(buf)]), nil
 }
 
-func roundFloat(x float64, prec int) float64 {
-	var rounder float64
-	pow := math.Pow(10, float64(prec))
-	intermed := x * pow
-	_, frac := math.Modf(intermed)
-	intermed += .5
-	x = .5
-	if frac < 0.0 {
-		x = -.5
-		intermed -= 1
-	}
-	if frac >= x {
-		rounder = math.Ceil(intermed)
-	} else {
-		rounder = math.Floor(intermed)
-	}
-
-	return rounder / pow
-}
-
 func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log.Logger) (NodeAttribute, error) {
 	var (
 		attr = NodeAttribute{
@@ -176,91 +154,83 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	switch DT {
-	case DT_None:
+	case DTNone:
 
 		l.Log("member", name, "read", length, "start position", pos, "value", nil)
-		pos += int64(length)
 
 		return attr, nil
 
-	case DT_Byte:
+	case DTByte:
 		p := make([]byte, 1)
 		n, err = r.Read(p)
 		attr.Value = p[0]
 
 		l.Log("member", name, "read", n, "start position", pos, "value", attr.Value)
-		pos += int64(n)
 
 		return attr, err
 
-	case DT_Short:
+	case DTShort:
 		var v int16
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_UShort:
+	case DTUShort:
 		var v uint16
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_Int:
+	case DTInt:
 		var v int32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_UInt:
+	case DTUInt:
 		var v uint32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_Float:
+	case DTFloat:
 		var v float32
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_Double:
+	case DTDouble:
 		var v float64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_IVec2, DT_IVec3, DT_IVec4:
+	case DTIVec2, DTIVec3, DTIVec4:
 		var col int
 		col, err = attr.GetColumns()
 		if err != nil {
 			return attr, err
 		}
 		vec := make(Ivec, col)
-		for i, _ := range vec {
+		for i := range vec {
 			var v int32
 			err = binary.Read(r, binary.LittleEndian, &v)
 			if err != nil {
@@ -271,18 +241,17 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		attr.Value = vec
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, nil
 
-	case DT_Vec2, DT_Vec3, DT_Vec4:
+	case DTVec2, DTVec3, DTVec4:
 		var col int
 		col, err = attr.GetColumns()
 		if err != nil {
 			return attr, err
 		}
 		vec := make(Vec, col)
-		for i, _ := range vec {
+		for i := range vec {
 			var v float32
 			err = binary.Read(r, binary.LittleEndian, &v)
 			if err != nil {
@@ -293,11 +262,10 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		attr.Value = vec
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, nil
 
-	case DT_Mat2, DT_Mat3, DT_Mat3x4, DT_Mat4x3, DT_Mat4:
+	case DTMat2, DTMat3, DTMat3x4, DTMat4x3, DTMat4:
 		var (
 			row int
 			col int
@@ -325,54 +293,52 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		attr.Value = (*Mat)(mat.NewDense(row, col, []float64(vec)))
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, nil
 
-	case DT_Bool:
+	case DTBool:
 		var v bool
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_ULongLong:
+	case DTULongLong:
 		var v uint64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_Long, DT_Int64:
+	case DTLong, DTInt64:
 		var v int64
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_Int8:
+	case DTInt8:
 		var v int8
 		err = binary.Read(r, binary.LittleEndian, &v)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
-		pos += int64(length)
 
 		return attr, err
 
-	case DT_UUID:
+	case DTUUID:
 		var v uuid.UUID
 		p := make([]byte, 16)
 		n, err = r.Read(p)
+		if err != nil {
+			return attr, err
+		}
 		reverse(p[:4])
 		reverse(p[4:6])
 		reverse(p[6:8])
@@ -380,7 +346,6 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		attr.Value = v
 
 		l.Log("member", name, "read", n, "start position", pos, "value", attr.Value)
-		pos += int64(n)
 
 		return attr, err
 
@@ -388,18 +353,18 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		// Strings are serialized differently for each file format and should be
 		// handled by the format-specific ReadAttribute()
 		// pretty.Log(attr)
-		return attr, fmt.Errorf("ReadAttribute() not implemented for type %v", DT)
+		return attr, fmt.Errorf("readAttribute() not implemented for type %v", DT)
 	}
 
-	return attr, nil
+	// return attr, nil
 }
 
-// LimitReader returns a Reader that reads from r
+// LimitReadSeeker returns a Reader that reads from r
 // but stops with EOF after n bytes.
 // The underlying implementation is a *LimitedReader.
 func LimitReadSeeker(r io.ReadSeeker, n int64) io.ReadSeeker { return &LimitedReadSeeker{r, n} }
 
-// A LimitedReader reads from R but limits the amount of
+// A LimitedReadSeeker reads from R but limits the amount of
 // data returned to just N bytes. Each call to Read
 // updates N to reflect the new amount remaining.
 // Read returns EOF when N <= 0 or when the underlying R returns EOF.
