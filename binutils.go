@@ -133,10 +133,6 @@ func ReadCString(r io.Reader, length int) (string, error) {
 		return string(buf[:clen(buf)]), err
 	}
 
-	if buf[len(buf)-1] != 0 {
-		return string(buf[:clen(buf)]), errors.New("string is not null-terminated")
-	}
-
 	return string(buf[:clen(buf)]), nil
 }
 
