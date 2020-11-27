@@ -1,4 +1,4 @@
-module github.com/lordwelch/golslib
+module github.com/lordwelch/lsgo
 
 go 1.15
 

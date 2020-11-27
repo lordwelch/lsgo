@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/kr/pretty"
-	lslib "github.com/lordwelch/golslib"
+	"github.com/lordwelch/lsgo"
 )
 
 var (
@@ -27,7 +27,7 @@ var (
 func init() {
 	flag.Parse()
 	if *logging {
-		lslib.Logger = lslib.NewFilter(map[string][]string{
+		lsgo.Logger = lsgo.NewFilter(map[string][]string{
 			"part": strings.Split(*parts, ","),
 		}, log.NewLogfmtLogger(os.Stderr))
 	}
@@ -45,7 +45,7 @@ func main() {
 
 		case !fi.IsDir():
 			err = openLSF(v)
-			if err != nil && !errors.As(err, &lslib.HeaderError{}) {
+			if err != nil && !errors.As(err, &lsgo.HeaderError{}) {
 				fmt.Fprintln(os.Stderr, err)
 				os.Exit(1)
 			}
@@ -62,7 +62,7 @@ func main() {
 					return nil
 				}
 				err = openLSF(path)
-				if err != nil && !errors.As(err, &lslib.HeaderError{}) {
+				if err != nil && !errors.As(err, &lsgo.HeaderError{}) {
 					fmt.Fprintln(os.Stderr, err)
 				}
 				return nil
@@ -76,7 +76,7 @@ func main() {
 }
 func openLSF(filename string) error {
 	var (
-		l   *lslib.Resource
+		l   *lsgo.Resource
 		err error
 		n   string
 		f   interface {
@@ -115,9 +115,9 @@ func openLSF(filename string) error {
 	return nil
 }
 
-func readLSF(filename string) (*lslib.Resource, error) {
+func readLSF(filename string) (*lsgo.Resource, error) {
 	var (
-		l   lslib.Resource
+		l   lsgo.Resource
 		f   *os.File
 		err error
 	)
@@ -127,20 +127,20 @@ func readLSF(filename string) (*lslib.Resource, error) {
 	}
 	defer f.Close()
 
-	l, err = lslib.ReadLSF(f)
+	l, err = lsgo.ReadLSF(f)
 	if err != nil {
 		return nil, err
 	}
 	return &l, nil
 }
 
-func marshalXML(l *lslib.Resource) (string, error) {
+func marshalXML(l *lsgo.Resource) (string, error) {
 	var (
 		v   []byte
 		err error
 	)
 	v, err = xml.MarshalIndent(struct {
-		*lslib.Resource
+		*lsgo.Resource
 		XMLName string `xml:"save"`
 	}{l, ""}, "", "\t")
 	if err != nil {
