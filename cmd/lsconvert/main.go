@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.narnian.us/lordwelch/lsgo"
+
 	"github.com/go-kit/kit/log"
 	"github.com/kr/pretty"
-	"github.com/lordwelch/lsgo"
 )
 
 var (

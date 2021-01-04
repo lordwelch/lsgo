@@ -1,4 +1,4 @@
-module github.com/lordwelch/lsgo
+module git.narnian.us/lordwelch/lsgo
 
 go 1.15
 

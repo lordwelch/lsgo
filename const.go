@@ -1,4 +1,4 @@
-package lslib
+package lsgo
 
 import "errors"
 
