@@ -6,7 +6,7 @@ import (
 )
 
 type LSMetadata struct {
-	//public const uint CurrentMajorVersion = 33;
+	// public const uint CurrentMajorVersion = 33;
 
 	Timestamp uint64 `xml:"-"`
 	Major     uint32 `xml:"major,attr"`
@@ -15,18 +15,12 @@ type LSMetadata struct {
 	Build     uint32 `xml:"build,attr"`
 }
 
-type format struct {
-	name, magic string
-	read        func(io.Reader) (Resource, error)
-}
-
 type Resource struct {
 	Metadata LSMetadata `xml:"version"`
 	Regions  []*Node    `xml:"region"`
 }
 
 func (r *Resource) Read(io.Reader) {
-
 }
 
 // public Resource()

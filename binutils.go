@@ -406,3 +406,142 @@ func (l *LimitedReadSeeker) Seek(offset int64, whence int) (int64, error) {
 		return -1, io.ErrNoProgress
 	}
 }
+
+func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion uint32) (TranslatedString, error) {
+	var (
+		str TranslatedString
+		err error
+	)
+
+	if version >= VerBG3 || engineVersion == 0x4000001d {
+		// logger.Println("decoding bg3 data")
+		var version uint16
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
+		str.Version = version
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
+		if version == 0 {
+			str.Value, err = ReadCString(r, int(str.Version))
+			if err != nil {
+				return str, err
+			}
+			str.Version = 0
+		} else {
+			_, err = r.Seek(-2, io.SeekCurrent)
+		}
+	} else {
+		str.Version = 0
+
+		var (
+			vlength int32
+			v       []byte
+			// n       int
+		)
+
+		err = binary.Read(r, binary.LittleEndian, &vlength)
+		if err != nil {
+			return str, err
+		}
+		v = make([]byte, vlength)
+		_, err = r.Read(v)
+		if err != nil {
+			return str, err
+		}
+		str.Value = string(v)
+	}
+
+	var handleLength int32
+	err = binary.Read(r, binary.LittleEndian, &handleLength)
+	if err != nil {
+		return str, err
+	}
+	str.Handle, err = ReadCString(r, int(handleLength))
+	if err != nil {
+		return str, err
+	}
+	// logger.Printf("handle %s; %v", str.Handle, err)
+	return str, nil
+}
+
+func ReadTranslatedFSString(r io.ReadSeeker, version FileVersion) (TranslatedFSString, error) {
+	var (
+		str = TranslatedFSString{}
+		err error
+	)
+
+	if version >= VerBG3 {
+		var version uint16
+		err = binary.Read(r, binary.LittleEndian, &version)
+		if err != nil {
+			return str, err
+		}
+		str.Version = version
+	} else {
+		str.Version = 0
+
+		var length int32
+
+		err = binary.Read(r, binary.LittleEndian, &length)
+		if err != nil {
+			return str, err
+		}
+		str.Value, err = ReadCString(r, int(length))
+		if err != nil {
+			return str, err
+		}
+	}
+
+	var handleLength int32
+	err = binary.Read(r, binary.LittleEndian, &handleLength)
+	if err != nil {
+		return str, err
+	}
+	str.Handle, err = ReadCString(r, int(handleLength))
+	if err != nil {
+		return str, err
+	}
+
+	var arguments int32
+	err = binary.Read(r, binary.LittleEndian, &arguments)
+	if err != nil {
+		return str, err
+	}
+	str.Arguments = make([]TranslatedFSStringArgument, 0, arguments)
+	for i := 0; i < int(arguments); i++ {
+		arg := TranslatedFSStringArgument{}
+
+		var argKeyLength int32
+		err = binary.Read(r, binary.LittleEndian, &argKeyLength)
+		if err != nil {
+			return str, err
+		}
+		arg.Key, err = ReadCString(r, int(argKeyLength))
+		if err != nil {
+			return str, err
+		}
+
+		arg.String, err = ReadTranslatedFSString(r, version)
+		if err != nil {
+			return str, err
+		}
+
+		var argValueLength int32
+		err = binary.Read(r, binary.LittleEndian, &argValueLength)
+		if err != nil {
+			return str, err
+		}
+		arg.Value, err = ReadCString(r, int(argValueLength))
+		if err != nil {
+			return str, err
+		}
+
+		str.Arguments = append(str.Arguments, arg)
+	}
+
+	return str, nil
+}

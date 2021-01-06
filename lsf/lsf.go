@@ -1,61 +1,24 @@
-package lsgo
+package lsf
 
 import (
 	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
+
+	"git.narnian.us/lordwelch/lsgo"
 
 	"github.com/go-kit/kit/log"
 )
 
-var (
-	LSFSignature            = [4]byte{0x4C, 0x53, 0x4F, 0x46}
-	Logger       log.Logger = log.NewNopLogger()
-)
-
-// NewFilter allows filtering of l
-func NewFilter(f map[string][]string, l log.Logger) log.Logger {
-	return filter{
-		filter: f,
-		next:   l,
-	}
-}
-
-type filter struct {
-	next   log.Logger
-	filter map[string][]string
-}
-
-func (f filter) Log(keyvals ...interface{}) error {
-	var allowed = true // allow everything
-	for i := 0; i < len(keyvals)-1; i += 2 {
-		if v, ok := keyvals[i].(string); ok { // key
-			if fil, ok := f.filter[v]; ok { // key has a filter
-				if v, ok = keyvals[i+1].(string); ok { // value is a string
-					allowed = false // this key has a filter deny everything except what the filter allows
-					for _, fi := range fil {
-						if strings.Contains(v, fi) {
-							allowed = true
-						}
-					}
-				}
-			}
-		}
-	}
-	if allowed {
-		return f.next.Log(keyvals...)
-	}
-	return nil
-}
+var LSFSignature = [4]byte{0x4C, 0x53, 0x4F, 0x46}
 
 type LSFHeader struct {
 	// LSOF file signature
 	Signature [4]byte
 
 	// Version of the LSOF file D:OS EE is version 1/2, D:OS 2 is version 3
-	Version FileVersion
+	Version lsgo.FileVersion
 
 	// Possibly version number? (major, minor, rev, build)
 	EngineVersion uint32
@@ -103,7 +66,7 @@ func (lsfh *LSFHeader) Read(r io.ReadSeeker) error {
 		n   int
 		err error
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "header")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "header")
 	pos, err = r.Seek(0, io.SeekCurrent)
 	n, err = r.Read(lsfh.Signature[:])
 	if err != nil {
@@ -233,7 +196,7 @@ func (lsfh *LSFHeader) Read(r io.ReadSeeker) error {
 }
 
 func (lsfh LSFHeader) IsCompressed() bool {
-	return CompressionFlagsToMethod(lsfh.CompressionFlags) != CMNone && CompressionFlagsToMethod(lsfh.CompressionFlags) != CMInvalid
+	return lsgo.CompressionFlagsToMethod(lsfh.CompressionFlags) != lsgo.CMNone && lsgo.CompressionFlagsToMethod(lsfh.CompressionFlags) != lsgo.CMInvalid
 }
 
 type NodeEntry struct {
@@ -274,7 +237,7 @@ func (ne *NodeEntry) readShort(r io.ReadSeeker) error {
 		err error
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "short node")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "short node")
 	pos, err = r.Seek(0, io.SeekCurrent)
 	err = binary.Read(r, binary.LittleEndian, &ne.NameHashTableIndex)
 	n = 4
@@ -312,7 +275,7 @@ func (ne *NodeEntry) readLong(r io.ReadSeeker) error {
 		err error
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "long node")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "long node")
 	pos, err = r.Seek(0, io.SeekCurrent)
 	err = binary.Read(r, binary.LittleEndian, &ne.NameHashTableIndex)
 	n = 4
@@ -417,7 +380,7 @@ func (ae *AttributeEntry) readShort(r io.ReadSeeker) error {
 		err error
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "short attribute")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "short attribute")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &ae.NameHashTableIndex)
@@ -454,7 +417,7 @@ func (ae *AttributeEntry) readLong(r io.ReadSeeker) error {
 		err error
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "long attribute")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "long attribute")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &ae.NameHashTableIndex)
@@ -503,8 +466,8 @@ func (ae AttributeEntry) NameOffset() int {
 }
 
 // Type of this attribute (see NodeAttribute.DataType)
-func (ae AttributeEntry) TypeID() DataType {
-	return DataType(ae.TypeAndLength & 0x3f)
+func (ae AttributeEntry) TypeID() lsgo.DataType {
+	return lsgo.DataType(ae.TypeAndLength & 0x3f)
 }
 
 // Length of this attribute
@@ -522,7 +485,7 @@ type AttributeInfo struct {
 	NameOffset int
 
 	// Type of this attribute (see NodeAttribute.DataType)
-	TypeID DataType
+	TypeID lsgo.DataType
 
 	// Length of this attribute
 	Length uint
@@ -546,7 +509,7 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 		pos int64
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "names")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "names")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &numHashEntries)
@@ -567,7 +530,7 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 		l.Log("member", "numStrings", "read", n, "start position", pos, "value", numStrings)
 		pos += int64(n)
 
-		var hash = make([]string, int(numStrings))
+		hash := make([]string, int(numStrings))
 		for x := range hash {
 			var (
 				nameLen uint16
@@ -702,19 +665,9 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 	//     );
 	//     Console.WriteLine(debug);
 	// }
-
 }
 
-type HeaderError struct {
-	Expected []byte
-	Got      []byte
-}
-
-func (he HeaderError) Error() string {
-	return fmt.Sprintf("Invalid LSF signature; expected %v, got %v", he.Expected, he.Got)
-}
-
-func ReadLSF(r io.ReadSeeker) (Resource, error) {
+func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 	var (
 		err error
 
@@ -728,38 +681,36 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		attributeInfo []AttributeInfo
 
 		// Node instances
-		nodeInstances []*Node
+		nodeInstances []*lsgo.Node
 	)
 	var (
 		l         log.Logger
 		pos, npos int64
 		// n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "file")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "file")
 	pos, err = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "header", "start position", pos)
 
 	hdr := &LSFHeader{}
 	err = hdr.Read(r)
 	if err != nil || (hdr.Signature != LSFSignature) {
-		return Resource{}, HeaderError{LSFSignature[:], hdr.Signature[:]}
+		return lsgo.Resource{}, lsgo.HeaderError{Expected: LSFSignature[:], Got: hdr.Signature[:]}
 	}
 
-	if hdr.Version < VerInitial || hdr.Version > MaxVersion {
-		return Resource{}, fmt.Errorf("LSF version %v is not supported", hdr.Version)
+	if hdr.Version < lsgo.VerInitial || hdr.Version > lsgo.MaxVersion {
+		return lsgo.Resource{}, fmt.Errorf("LSF version %v is not supported", hdr.Version)
 	}
 
-	isCompressed := CompressionFlagsToMethod(hdr.CompressionFlags) != CMNone && CompressionFlagsToMethod(hdr.CompressionFlags) != CMInvalid
+	isCompressed := lsgo.CompressionFlagsToMethod(hdr.CompressionFlags) != lsgo.CMNone && lsgo.CompressionFlagsToMethod(hdr.CompressionFlags) != lsgo.CMInvalid
 
 	pos, err = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "LSF names", "start position", pos)
 	if hdr.StringsSizeOnDisk > 0 || hdr.StringsUncompressedSize > 0 {
-		var (
-			uncompressed = LimitReadSeeker(r, int64(hdr.StringsSizeOnDisk))
-		)
+		uncompressed := lsgo.LimitReadSeeker(r, int64(hdr.StringsSizeOnDisk))
 
 		if isCompressed {
-			uncompressed = Decompress(uncompressed, int(hdr.StringsUncompressedSize), hdr.CompressionFlags, false)
+			uncompressed = lsgo.Decompress(uncompressed, int(hdr.StringsUncompressedSize), hdr.CompressionFlags, false)
 		}
 
 		// using (var nodesFile = new FileStream("names.bin", FileMode.Create, FileAccess.Write))
@@ -770,7 +721,7 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		names, err = ReadNames(uncompressed)
 		// pretty.Log(len(names), names)
 		if err != nil && err != io.EOF {
-			return Resource{}, err
+			return lsgo.Resource{}, err
 		}
 	}
 
@@ -783,11 +734,9 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		pos = npos
 	}
 	if hdr.NodesSizeOnDisk > 0 || hdr.NodesUncompressedSize > 0 {
-		var (
-			uncompressed = LimitReadSeeker(r, int64(hdr.NodesSizeOnDisk))
-		)
+		uncompressed := lsgo.LimitReadSeeker(r, int64(hdr.NodesSizeOnDisk))
 		if isCompressed {
-			uncompressed = Decompress(uncompressed, int(hdr.NodesUncompressedSize), hdr.CompressionFlags, hdr.Version >= VerChunkedCompress)
+			uncompressed = lsgo.Decompress(uncompressed, int(hdr.NodesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
 		}
 
 		// using (var nodesFile = new FileStream("nodes.bin", FileMode.Create, FileAccess.Write))
@@ -795,12 +744,12 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		//     nodesFile.Write(uncompressed, 0, uncompressed.Length);
 		// }
 
-		longNodes := hdr.Version >= VerExtendedNodes && hdr.Extended == 1
+		longNodes := hdr.Version >= lsgo.VerExtendedNodes && hdr.Extended == 1
 		nodeInfo, err = readNodeInfo(uncompressed, longNodes)
 		// pretty.Log(err, nodeInfo)
 		// logger.Printf("region 1 name: %v", names[nodeInfo[0].NameIndex])
 		if err != nil && err != io.EOF {
-			return Resource{}, err
+			return lsgo.Resource{}, err
 		}
 	}
 
@@ -813,11 +762,9 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		pos = npos
 	}
 	if hdr.AttributesSizeOnDisk > 0 || hdr.AttributesUncompressedSize > 0 {
-		var (
-			uncompressed io.ReadSeeker = LimitReadSeeker(r, int64(hdr.AttributesSizeOnDisk))
-		)
+		var uncompressed io.ReadSeeker = lsgo.LimitReadSeeker(r, int64(hdr.AttributesSizeOnDisk))
 		if isCompressed {
-			uncompressed = Decompress(uncompressed, int(hdr.AttributesUncompressedSize), hdr.CompressionFlags, hdr.Version >= VerChunkedCompress)
+			uncompressed = lsgo.Decompress(uncompressed, int(hdr.AttributesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
 		}
 
 		// using (var attributesFile = new FileStream("attributes.bin", FileMode.Create, FileAccess.Write))
@@ -825,7 +772,7 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 		//     attributesFile.Write(uncompressed, 0, uncompressed.Length);
 		// }
 
-		longAttributes := hdr.Version >= VerExtendedNodes && hdr.Extended == 1
+		longAttributes := hdr.Version >= lsgo.VerExtendedNodes && hdr.Extended == 1
 		attributeInfo = readAttributeInfo(uncompressed, longAttributes)
 		// logger.Printf("attribute 1 name: %v", names[attributeInfo[0].NameIndex])
 		// pretty.Log(attributeInfo)
@@ -839,18 +786,16 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 	} else {
 		pos = npos
 	}
-	var (
-		uncompressed io.ReadSeeker = LimitReadSeeker(r, int64(hdr.ValuesSizeOnDisk))
-	)
+	var uncompressed io.ReadSeeker = lsgo.LimitReadSeeker(r, int64(hdr.ValuesSizeOnDisk))
 	if hdr.ValuesSizeOnDisk > 0 || hdr.ValuesUncompressedSize > 0 {
 		if isCompressed {
-			uncompressed = Decompress(r, int(hdr.ValuesUncompressedSize), hdr.CompressionFlags, hdr.Version >= VerChunkedCompress)
+			uncompressed = lsgo.Decompress(r, int(hdr.ValuesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
 		}
 	}
 
-	res := Resource{}
-	valueStart, _ = uncompressed.Seek(0, io.SeekCurrent)
-	nodeInstances, err = ReadRegions(uncompressed, names, nodeInfo, attributeInfo, hdr.Version, hdr.EngineVersion)
+	res := lsgo.Resource{}
+	valueStart, _ := uncompressed.Seek(0, io.SeekCurrent)
+	nodeInstances, err = ReadRegions(uncompressed, valueStart, names, nodeInfo, attributeInfo, hdr.Version, hdr.EngineVersion)
 	if err != nil {
 		return res, err
 	}
@@ -867,16 +812,13 @@ func ReadLSF(r io.ReadSeeker) (Resource, error) {
 
 	// pretty.Log(res)
 	return res, nil
-
 }
 
-var valueStart int64
-
-func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attributeInfo []AttributeInfo, version FileVersion, engineVersion uint32) ([]*Node, error) {
-	NodeInstances := make([]*Node, 0, len(nodeInfo))
+func ReadRegions(r io.ReadSeeker, valueStart int64, names [][]string, nodeInfo []NodeInfo, attributeInfo []AttributeInfo, version lsgo.FileVersion, engineVersion uint32) ([]*lsgo.Node, error) {
+	NodeInstances := make([]*lsgo.Node, 0, len(nodeInfo))
 	for _, nodeInfo := range nodeInfo {
 		if nodeInfo.ParentIndex == -1 {
-			region, err := ReadNode(r, nodeInfo, names, attributeInfo, version, engineVersion)
+			region, err := ReadNode(r, valueStart, nodeInfo, names, attributeInfo, version, engineVersion)
 
 			// pretty.Log(err, region)
 
@@ -887,7 +829,7 @@ func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attribu
 				return NodeInstances, err
 			}
 		} else {
-			node, err := ReadNode(r, nodeInfo, names, attributeInfo, version, engineVersion)
+			node, err := ReadNode(r, valueStart, nodeInfo, names, attributeInfo, version, engineVersion)
 
 			// pretty.Log(err, node)
 
@@ -903,16 +845,16 @@ func ReadRegions(r io.ReadSeeker, names [][]string, nodeInfo []NodeInfo, attribu
 	return NodeInstances, nil
 }
 
-func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []AttributeInfo, version FileVersion, engineVersion uint32) (Node, error) {
+func ReadNode(r io.ReadSeeker, valueStart int64, ni NodeInfo, names [][]string, attributeInfo []AttributeInfo, version lsgo.FileVersion, engineVersion uint32) (lsgo.Node, error) {
 	var (
-		node  = Node{}
+		node  = lsgo.Node{}
 		index = ni.FirstAttributeIndex
 		err   error
 
 		l   log.Logger
 		pos int64
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "node")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "node")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	node.Name = names[ni.NameIndex][ni.NameOffset]
@@ -922,7 +864,7 @@ func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []At
 	for index != -1 {
 		var (
 			attribute = attributeInfo[index]
-			v         NodeAttribute
+			v         lsgo.NodeAttribute
 		)
 
 		if valueStart+int64(attribute.DataOffset) != pos {
@@ -943,12 +885,12 @@ func ReadNode(r io.ReadSeeker, ni NodeInfo, names [][]string, attributeInfo []At
 	return node, nil
 }
 
-func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, version FileVersion, engineVersion uint32) (NodeAttribute, error) {
+func ReadLSFAttribute(r io.ReadSeeker, name string, dt lsgo.DataType, length uint, version lsgo.FileVersion, engineVersion uint32) (lsgo.NodeAttribute, error) {
 	// LSF and LSB serialize the buffer types differently, so specialized
 	// code is added to the LSB and LSf serializers, and the common code is
 	// available in BinUtils.ReadAttribute()
 	var (
-		attr = NodeAttribute{
+		attr = lsgo.NodeAttribute{
 			Type: dt,
 			Name: name,
 		}
@@ -957,13 +899,13 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, ve
 		l   log.Logger
 		pos int64
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsf", "part", "attribute")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "attribute")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	switch dt {
-	case DTString, DTPath, DTFixedString, DTLSString, DTWString, DTLSWString:
+	case lsgo.DTString, lsgo.DTPath, lsgo.DTFixedString, lsgo.DTLSString, lsgo.DTWString, lsgo.DTLSWString:
 		var v string
-		v, err = ReadCString(r, int(length))
+		v, err = lsgo.ReadCString(r, int(length))
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
@@ -971,9 +913,9 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, ve
 
 		return attr, err
 
-	case DTTranslatedString:
-		var v TranslatedString
-		v, err = ReadTranslatedString(r, version, engineVersion)
+	case lsgo.DTTranslatedString:
+		var v lsgo.TranslatedString
+		v, err = lsgo.ReadTranslatedString(r, version, engineVersion)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
@@ -981,9 +923,9 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, ve
 
 		return attr, err
 
-	case DTTranslatedFSString:
-		var v TranslatedFSString
-		v, err = ReadTranslatedFSString(r, version)
+	case lsgo.DTTranslatedFSString:
+		var v lsgo.TranslatedFSString
+		v, err = lsgo.ReadTranslatedFSString(r, version)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
@@ -991,7 +933,7 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, ve
 
 		return attr, err
 
-	case DTScratchBuffer:
+	case lsgo.DTScratchBuffer:
 
 		v := make([]byte, length)
 		_, err = r.Read(v)
@@ -1003,147 +945,10 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt DataType, length uint, ve
 		return attr, err
 
 	default:
-		return ReadAttribute(r, name, dt, length, l)
+		return lsgo.ReadAttribute(r, name, dt, length, l)
 	}
 }
 
-func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion uint32) (TranslatedString, error) {
-	var (
-		str TranslatedString
-		err error
-	)
-
-	if version >= VerBG3 || engineVersion == 0x4000001d {
-		// logger.Println("decoding bg3 data")
-		var version uint16
-		err = binary.Read(r, binary.LittleEndian, &version)
-		if err != nil {
-			return str, err
-		}
-		str.Version = version
-		err = binary.Read(r, binary.LittleEndian, &version)
-		if err != nil {
-			return str, err
-		}
-		if version == 0 {
-			str.Value, err = ReadCString(r, int(str.Version))
-			if err != nil {
-				return str, err
-			}
-			str.Version = 0
-		} else {
-			_, err = r.Seek(-2, io.SeekCurrent)
-		}
-	} else {
-		str.Version = 0
-
-		var (
-			vlength int32
-			v       []byte
-			// n       int
-		)
-
-		err = binary.Read(r, binary.LittleEndian, &vlength)
-		if err != nil {
-			return str, err
-		}
-		v = make([]byte, vlength)
-		_, err = r.Read(v)
-		if err != nil {
-			return str, err
-		}
-		str.Value = string(v)
-	}
-
-	var handleLength int32
-	err = binary.Read(r, binary.LittleEndian, &handleLength)
-	if err != nil {
-		return str, err
-	}
-	str.Handle, err = ReadCString(r, int(handleLength))
-	if err != nil {
-		return str, err
-	}
-	// logger.Printf("handle %s; %v", str.Handle, err)
-	return str, nil
-}
-
-func ReadTranslatedFSString(r io.ReadSeeker, version FileVersion) (TranslatedFSString, error) {
-	var (
-		str = TranslatedFSString{}
-		err error
-	)
-
-	if version >= VerBG3 {
-		var version uint16
-		err = binary.Read(r, binary.LittleEndian, &version)
-		if err != nil {
-			return str, err
-		}
-		str.Version = version
-	} else {
-		str.Version = 0
-
-		var (
-			length int32
-		)
-
-		err = binary.Read(r, binary.LittleEndian, &length)
-		if err != nil {
-			return str, err
-		}
-		str.Value, err = ReadCString(r, int(length))
-		if err != nil {
-			return str, err
-		}
-	}
-
-	var handleLength int32
-	err = binary.Read(r, binary.LittleEndian, &handleLength)
-	if err != nil {
-		return str, err
-	}
-	str.Handle, err = ReadCString(r, int(handleLength))
-	if err != nil {
-		return str, err
-	}
-
-	var arguments int32
-	err = binary.Read(r, binary.LittleEndian, &arguments)
-	if err != nil {
-		return str, err
-	}
-	str.Arguments = make([]TranslatedFSStringArgument, 0, arguments)
-	for i := 0; i < int(arguments); i++ {
-		arg := TranslatedFSStringArgument{}
-
-		var argKeyLength int32
-		err = binary.Read(r, binary.LittleEndian, &argKeyLength)
-		if err != nil {
-			return str, err
-		}
-		arg.Key, err = ReadCString(r, int(argKeyLength))
-		if err != nil {
-			return str, err
-		}
-
-		arg.String, err = ReadTranslatedFSString(r, version)
-		if err != nil {
-			return str, err
-		}
-
-		var argValueLength int32
-		err = binary.Read(r, binary.LittleEndian, &argValueLength)
-		if err != nil {
-			return str, err
-		}
-		arg.Value, err = ReadCString(r, int(argValueLength))
-		if err != nil {
-			return str, err
-		}
-
-		str.Arguments = append(str.Arguments, arg)
-	}
-
-	return str, nil
+func init() {
+	lsgo.RegisterFormat("lsf", "LSOF", ReadLSF)
 }

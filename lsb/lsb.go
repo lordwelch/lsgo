@@ -1,4 +1,4 @@
-package lsgo
+package lsb
 
 import (
 	"encoding/binary"
@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+
+	"git.narnian.us/lordwelch/lsgo"
 
 	"github.com/go-kit/kit/log"
 )
@@ -15,7 +17,7 @@ type LSBHeader struct {
 	Size       uint32
 	Endianness uint32
 	Unknown    uint32
-	Version    LSMetadata
+	Version    lsgo.LSMetadata
 }
 
 func (lsbh *LSBHeader) Read(r io.ReadSeeker) error {
@@ -25,7 +27,7 @@ func (lsbh *LSBHeader) Read(r io.ReadSeeker) error {
 		n   int
 		err error
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "header")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "header")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	n, err = r.Read(lsbh.Signature[:])
@@ -102,27 +104,27 @@ func (lsbh *LSBHeader) Read(r io.ReadSeeker) error {
 
 type IdentifierDictionary map[int]string
 
-func ReadLSB(r io.ReadSeeker) (Resource, error) {
+func ReadLSB(r io.ReadSeeker) (lsgo.Resource, error) {
 	var (
 		hdr = &LSBHeader{}
 		h   = [4]byte{0x00, 0x00, 0x00, 0x40}
 		err error
 		d   IdentifierDictionary
-		res Resource
+		res lsgo.Resource
 
 		l   log.Logger
 		pos int64
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "file")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "file")
 	pos, err = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "header", "start position", pos)
 
 	err = hdr.Read(r)
 	if err != nil {
-		return Resource{}, err
+		return lsgo.Resource{}, err
 	}
 	if !(hdr.Signature == [4]byte{'L', 'S', 'F', 'M'} || hdr.Signature == h) {
-		return Resource{}, HeaderError{
+		return lsgo.Resource{}, lsgo.HeaderError{
 			Expected: []byte("LSFM"),
 			Got:      hdr.Signature[:],
 		}
@@ -132,13 +134,13 @@ func ReadLSB(r io.ReadSeeker) (Resource, error) {
 	l.Log("member", "string dictionary", "start position", pos)
 	d, err = ReadLSBDictionary(r, binary.LittleEndian)
 	if err != nil {
-		return Resource{}, err
+		return lsgo.Resource{}, err
 	}
 
 	pos, err = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "Regions", "start position", pos)
 
-	res, err = ReadLSBRegions(r, d, binary.LittleEndian, FileVersion(hdr.Version.Major))
+	res, err = ReadLSBRegions(r, d, binary.LittleEndian, lsgo.FileVersion(hdr.Version.Major))
 	res.Metadata = hdr.Version
 	return res, err
 }
@@ -153,7 +155,7 @@ func ReadLSBDictionary(r io.ReadSeeker, endianness binary.ByteOrder) (Identifier
 		pos int64
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "dictionary")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "dictionary")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, endianness, &length)
@@ -179,7 +181,7 @@ func ReadLSBDictionary(r io.ReadSeeker, endianness binary.ByteOrder) (Identifier
 		l.Log("member", "stringLength", "read", n, "start position", pos, "value", stringLength)
 		pos += int64(n)
 
-		str, err = ReadCString(r, int(stringLength))
+		str, err = lsgo.ReadCString(r, int(stringLength))
 		n += int(stringLength)
 		if err != nil {
 			return dict, err
@@ -199,7 +201,7 @@ func ReadLSBDictionary(r io.ReadSeeker, endianness binary.ByteOrder) (Identifier
 	return dict, nil
 }
 
-func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version FileVersion) (Resource, error) {
+func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version lsgo.FileVersion) (lsgo.Resource, error) {
 	var (
 		regions []struct {
 			name   string
@@ -212,13 +214,13 @@ func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.B
 		pos int64
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "region")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "region")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, endianness, &regionCount)
 	n = 4
 	if err != nil {
-		return Resource{}, err
+		return lsgo.Resource{}, err
 	}
 	l.Log("member", "regionCount", "read", n, "start position", pos, "value", regionCount)
 	pos += int64(n)
@@ -235,17 +237,17 @@ func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.B
 		err = binary.Read(r, endianness, &key)
 		n = 4
 		if err != nil {
-			return Resource{}, err
+			return lsgo.Resource{}, err
 		}
 		l.Log("member", "key", "read", n, "start position", pos, "value", d[int(key)], "key", key)
 		pos += int64(n)
 		if regions[i].name, ok = d[int(key)]; !ok {
-			return Resource{}, ErrInvalidNameKey
+			return lsgo.Resource{}, lsgo.ErrInvalidNameKey
 		}
 		err = binary.Read(r, endianness, &regions[i].offset)
 		n = 4
 		if err != nil {
-			return Resource{}, err
+			return lsgo.Resource{}, err
 		}
 		l.Log("member", "offset", "read", n, "start position", pos, "value", regions[i].offset)
 		pos += int64(n)
@@ -253,11 +255,11 @@ func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.B
 	sort.Slice(regions, func(i, j int) bool {
 		return regions[i].offset < regions[j].offset
 	})
-	res := Resource{
-		Regions: make([]*Node, 0, regionCount),
+	res := lsgo.Resource{
+		Regions: make([]*lsgo.Node, 0, regionCount),
 	}
 	for _, re := range regions {
-		var node *Node
+		var node *lsgo.Node
 		node, err = readLSBNode(r, d, endianness, version, re.offset)
 		if err != nil {
 			return res, err
@@ -268,12 +270,12 @@ func ReadLSBRegions(r io.ReadSeeker, d IdentifierDictionary, endianness binary.B
 	return res, nil
 }
 
-func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version FileVersion, offset uint32) (*Node, error) {
+func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version lsgo.FileVersion, offset uint32) (*lsgo.Node, error) {
 	var (
 		key        uint32
 		attrCount  uint32
 		childCount uint32
-		node       = new(Node)
+		node       = new(lsgo.Node)
 		err        error
 		ok         bool
 
@@ -281,7 +283,7 @@ func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.Byte
 		pos int64
 		n   int
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "node")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "node")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	if pos != int64(offset) && offset != 0 {
@@ -315,7 +317,7 @@ func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.Byte
 	}
 	l.Log("member", "childCount", "read", n, "start position", pos, "value", childCount)
 
-	node.Attributes = make([]NodeAttribute, int(attrCount))
+	node.Attributes = make([]lsgo.NodeAttribute, int(attrCount))
 
 	for i := range node.Attributes {
 		node.Attributes[i], err = readLSBAttribute(r, d, endianness, version)
@@ -324,7 +326,7 @@ func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.Byte
 		}
 	}
 
-	node.Children = make([]*Node, int(childCount))
+	node.Children = make([]*lsgo.Node, int(childCount))
 	for i := range node.Children {
 		node.Children[i], err = readLSBNode(r, d, endianness, version, 0)
 		if err != nil {
@@ -334,12 +336,12 @@ func readLSBNode(r io.ReadSeeker, d IdentifierDictionary, endianness binary.Byte
 	return node, nil
 }
 
-func readLSBAttribute(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version FileVersion) (NodeAttribute, error) {
+func readLSBAttribute(r io.ReadSeeker, d IdentifierDictionary, endianness binary.ByteOrder, version lsgo.FileVersion) (lsgo.NodeAttribute, error) {
 	var (
 		key      uint32
 		name     string
 		attrType uint32
-		attr     NodeAttribute
+		attr     lsgo.NodeAttribute
 		err      error
 		ok       bool
 	)
@@ -348,21 +350,21 @@ func readLSBAttribute(r io.ReadSeeker, d IdentifierDictionary, endianness binary
 		return attr, err
 	}
 	if name, ok = d[int(key)]; !ok {
-		return attr, ErrInvalidNameKey
+		return attr, lsgo.ErrInvalidNameKey
 	}
 	err = binary.Read(r, endianness, &attrType)
 	if err != nil {
 		return attr, err
 	}
-	return ReadLSBAttr(r, name, DataType(attrType), endianness, version)
+	return ReadLSBAttr(r, name, lsgo.DataType(attrType), endianness, version)
 }
 
-func ReadLSBAttr(r io.ReadSeeker, name string, dt DataType, endianness binary.ByteOrder, version FileVersion) (NodeAttribute, error) {
+func ReadLSBAttr(r io.ReadSeeker, name string, dt lsgo.DataType, endianness binary.ByteOrder, version lsgo.FileVersion) (lsgo.NodeAttribute, error) {
 	// LSF and LSB serialize the buffer types differently, so specialized
 	// code is added to the LSB and LSf serializers, and the common code is
 	// available in BinUtils.ReadAttribute()
 	var (
-		attr = NodeAttribute{
+		attr = lsgo.NodeAttribute{
 			Type: dt,
 			Name: name,
 		}
@@ -372,38 +374,38 @@ func ReadLSBAttr(r io.ReadSeeker, name string, dt DataType, endianness binary.By
 		l   log.Logger
 		pos int64
 	)
-	l = log.With(Logger, "component", "LS converter", "file type", "lsb", "part", "attribute")
+	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsb", "part", "attribute")
 	pos, err = r.Seek(0, io.SeekCurrent)
 
 	switch dt {
-	case DTString, DTPath, DTFixedString, DTLSString: //, DTLSWString:
+	case lsgo.DTString, lsgo.DTPath, lsgo.DTFixedString, lsgo.DTLSString: //, DTLSWString:
 		var v string
 		err = binary.Read(r, endianness, &length)
 		if err != nil {
 			return attr, err
 		}
-		v, err = ReadCString(r, int(length))
+		v, err = lsgo.ReadCString(r, int(length))
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
 
 		return attr, err
 
-	case DTWString:
+	case lsgo.DTWString:
 		panic("Not implemented")
 
-	case DTTranslatedString:
-		var v TranslatedString
-		v, err = ReadTranslatedString(r, version, 0)
+	case lsgo.DTTranslatedString:
+		var v lsgo.TranslatedString
+		v, err = lsgo.ReadTranslatedString(r, version, 0)
 		attr.Value = v
 
 		l.Log("member", name, "read", length, "start position", pos, "value", attr.Value)
 
 		return attr, err
 
-	case DTTranslatedFSString:
+	case lsgo.DTTranslatedFSString:
 		panic("Not implemented")
-		var v TranslatedFSString
+		var v lsgo.TranslatedFSString
 		// v, err = ReadTranslatedFSString(r, Version)
 		attr.Value = v
 
@@ -411,7 +413,7 @@ func ReadLSBAttr(r io.ReadSeeker, name string, dt DataType, endianness binary.By
 
 		return attr, err
 
-	case DTScratchBuffer:
+	case lsgo.DTScratchBuffer:
 		panic("Not implemented")
 
 		v := make([]byte, length)
@@ -423,6 +425,11 @@ func ReadLSBAttr(r io.ReadSeeker, name string, dt DataType, endianness binary.By
 		return attr, err
 
 	default:
-		return ReadAttribute(r, name, dt, uint(length), l)
+		return lsgo.ReadAttribute(r, name, dt, uint(length), l)
 	}
+}
+
+func init() {
+	lsgo.RegisterFormat("lsb", "LSFM", ReadLSB)
+	lsgo.RegisterFormat("lsb", "\x00\x00\x00\x40", ReadLSB)
 }

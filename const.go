@@ -1,6 +1,9 @@
 package lsgo
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type FileVersion uint32
 
@@ -43,3 +46,12 @@ var (
 	ErrInvalidNameKey  = errors.New("invalid name key")
 	ErrKeyDoesNotMatch = errors.New("key for this node does not match")
 )
+
+type HeaderError struct {
+	Expected []byte
+	Got      []byte
+}
+
+func (he HeaderError) Error() string {
+	return fmt.Sprintf("Invalid LSF signature; expected %v, got %v", he.Expected, he.Got)
+}

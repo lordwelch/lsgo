@@ -1,16 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"encoding/xml"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"git.narnian.us/lordwelch/lsgo"
+	_ "git.narnian.us/lordwelch/lsgo/lsb"
+	_ "git.narnian.us/lordwelch/lsgo/lsf"
 
 	"github.com/go-kit/kit/log"
 	"github.com/kr/pretty"
@@ -75,6 +80,7 @@ func main() {
 		}
 	}
 }
+
 func openLSF(filename string) error {
 	var (
 		l   *lsgo.Resource
@@ -118,17 +124,65 @@ func openLSF(filename string) error {
 
 func readLSF(filename string) (*lsgo.Resource, error) {
 	var (
-		l   lsgo.Resource
-		f   *os.File
-		err error
+		l    lsgo.Resource
+		r    io.ReadSeeker
+		file *os.File
+		fi   os.FileInfo
+		err  error
 	)
-	f, err = os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+	switch filepath.Ext(filename) {
 
-	l, err = lsgo.ReadLSF(f)
+	case ".lsf", ".lsb":
+		var b []byte
+		fi, err = os.Stat(filename)
+		if err != nil {
+			return nil, err
+		}
+		// Arbitrary size, no lsf file should reach 100 MB (I haven't found one over 90 KB) and if you don't have 100 MB of ram free you shouldn't be using this
+		if fi.Size() <= 100*1024*1024 {
+			b, err = ioutil.ReadFile(filename)
+			if err != nil {
+				return nil, err
+			}
+			r = bytes.NewReader(b)
+			break
+		}
+		fallthrough
+	default:
+		b := make([]byte, 4)
+		file, err = os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+
+		_, err = file.Read(b)
+		if err != nil {
+			return nil, err
+		}
+		if !lsgo.SupportedFormat(b) {
+			return nil, lsgo.ErrFormat
+		}
+
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+		fi, _ = os.Stat(filename)
+
+		// I have never seen a valid "ls*" file over 90 KB
+		if fi.Size() < 1*1024*1024 {
+			b, err = ioutil.ReadAll(file)
+			if err != nil {
+				return nil, err
+			}
+			r = bytes.NewReader(b)
+		} else {
+			r = file
+		}
+	}
+
+	l, _, err = lsgo.Decode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -159,9 +213,7 @@ func marshalXML(l *lsgo.Resource) (string, error) {
 }
 
 func writeXML(f io.StringWriter, n string) error {
-	var (
-		err error
-	)
+	var err error
 	_, err = f.WriteString(strings.ToLower(xml.Header))
 	if err != nil {
 		return err

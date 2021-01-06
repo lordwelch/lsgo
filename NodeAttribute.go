@@ -385,9 +385,7 @@ func (na *NodeAttribute) FromString(str string) error {
 		}
 	}
 
-	var (
-		err error
-	)
+	var err error
 
 	switch na.Type {
 	case DTNone:
