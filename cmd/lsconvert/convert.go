@@ -21,25 +21,32 @@ import (
 )
 
 var (
-	write         = flag.Bool("w", false, "replace the file with xml data")
-	printXML      = flag.Bool("x", false, "print xml to stdout")
-	printResource = flag.Bool("R", false, "print the resource struct to stderr")
-	recurse       = flag.Bool("r", false, "recurse into directories")
-	logging       = flag.Bool("l", false, "enable logging to stderr")
-	parts         = flag.String("p", "", "parts to filter logging for, comma separated")
+	convertFS    = flag.NewFlagSet("convert", flag.ExitOnError)
+	convertFlags = struct {
+		write         bool
+		printXML      bool
+		printResource bool
+		recurse       bool
+		logging       bool
+		parts         string
+	}{}
 )
 
-func init() {
-	flag.Parse()
-	if *logging {
+func convert(arguments []string) {
+	convertFS.BoolVar(&convertFlags.write, "w", false, "Replace the file with XML data")
+	convertFS.BoolVar(&convertFlags.printXML, "x", false, "Print XML to stdout")
+	convertFS.BoolVar(&convertFlags.printResource, "R", false, "Print the resource struct to stderr")
+	convertFS.BoolVar(&convertFlags.recurse, "r", false, "Recurse into directories")
+	convertFS.BoolVar(&convertFlags.logging, "l", false, "Enable logging to stderr")
+	convertFS.StringVar(&convertFlags.parts, "p", "", "Parts to filter logging for, comma separated")
+	convertFS.Parse(arguments)
+	if convertFlags.logging {
 		lsgo.Logger = lsgo.NewFilter(map[string][]string{
-			"part": strings.Split(*parts, ","),
+			"part": strings.Split(convertFlags.parts, ","),
 		}, log.NewLogfmtLogger(os.Stderr))
 	}
-}
 
-func main() {
-	for _, v := range flag.Args() {
+	for _, v := range convertFS.Args() {
 		fi, err := os.Stat(v)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -53,7 +60,7 @@ func main() {
 				os.Exit(1)
 			}
 
-		case *recurse:
+		case convertFlags.recurse:
 			_ = filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return nil
@@ -92,21 +99,21 @@ func openLSF(filename string) error {
 	if err != nil {
 		return fmt.Errorf("reading LSF file %s failed: %w", filename, err)
 	}
-	if *printResource {
+	if convertFlags.printResource {
 		pretty.Log(l)
 	}
-	if *printXML || *write {
+	if convertFlags.printXML || convertFlags.write {
 		n, err = marshalXML(l)
 		if err != nil {
 			return fmt.Errorf("creating XML from LSF file %s failed: %w", filename, err)
 		}
 
-		if *write {
+		if convertFlags.write {
 			f, err = os.OpenFile(filename, os.O_TRUNC|os.O_RDWR, 0o666)
 			if err != nil {
 				return fmt.Errorf("writing XML from LSF file %s failed: %w", filename, err)
 			}
-		} else if *printXML {
+		} else if convertFlags.printXML {
 			f = os.Stdout
 		}
 
