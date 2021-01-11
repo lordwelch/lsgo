@@ -37,7 +37,7 @@ type Node struct {
 	RegionName string `xml:"-"`
 }
 
-func (n Node) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+func (n *Node) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	R := xml.Name{
 		Local: "region",
 	}

@@ -85,21 +85,18 @@ func MakeCompressionFlags(method CompressionMethod, level CompressionLevel) int 
 func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byte, chunked bool) io.ReadSeeker {
 	switch CompressionMethod(compressionFlags & 0x0f) {
 	case CMNone:
-		// logger.Println("No compression")
 		if v, ok := compressed.(io.ReadSeeker); ok {
 			return v
 		}
 		panic(errors.New("compressed must be an io.ReadSeeker if there is no compression"))
 
 	case CMZlib:
-		// logger.Println("zlib compression")
 		zr, _ := zlib.NewReader(compressed)
 		v, _ := ioutil.ReadAll(zr)
 		return bytes.NewReader(v)
 
 	case CMLZ4:
 		if chunked {
-			// logger.Println("lz4 stream compressed")
 			zr := lz4.NewReader(compressed)
 			p := make([]byte, uncompressedSize)
 			_, err := zr.Read(p)
@@ -108,10 +105,7 @@ func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byt
 			}
 			return bytes.NewReader(p)
 		}
-		// logger.Println("lz4 block compressed")
-		// panic(errors.New("not implemented"))
 		src, _ := ioutil.ReadAll(compressed)
-		// logger.Println(len(src))
 		dst := make([]byte, uncompressedSize*2)
 		_, err := lz4.UncompressBlock(src, dst)
 		if err != nil {
@@ -147,7 +141,7 @@ func ReadAttribute(r io.ReadSeeker, name string, DT DataType, length uint, l log
 		pos int64
 		n   int
 	)
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	switch DT {
 	case DTNone:
@@ -414,7 +408,6 @@ func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion ui
 	)
 
 	if version >= VerBG3 || engineVersion == 0x4000001d {
-		// logger.Println("decoding bg3 data")
 		var version uint16
 		err = binary.Read(r, binary.LittleEndian, &version)
 		if err != nil {
@@ -432,7 +425,7 @@ func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion ui
 			}
 			str.Version = 0
 		} else {
-			_, err = r.Seek(-2, io.SeekCurrent)
+			_, _ = r.Seek(-2, io.SeekCurrent)
 		}
 	} else {
 		str.Version = 0
@@ -464,11 +457,10 @@ func ReadTranslatedString(r io.ReadSeeker, version FileVersion, engineVersion ui
 	if err != nil {
 		return str, err
 	}
-	// logger.Printf("handle %s; %v", str.Handle, err)
 	return str, nil
 }
 
-func ReadTranslatedFSString(r io.ReadSeeker, version FileVersion) (TranslatedFSString, error) {
+func ReadTranslatedFSString(r io.Reader, version FileVersion) (TranslatedFSString, error) {
 	var (
 		str = TranslatedFSString{}
 		err error

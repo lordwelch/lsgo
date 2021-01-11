@@ -48,10 +48,10 @@ var (
 )
 
 type HeaderError struct {
-	Expected []byte
+	Expected string
 	Got      []byte
 }
 
 func (he HeaderError) Error() string {
-	return fmt.Sprintf("Invalid LSF signature; expected %v, got %v", he.Expected, he.Got)
+	return fmt.Sprintf("Invalid LSF signature; expected % X, got % X", he.Expected, he.Got)
 }

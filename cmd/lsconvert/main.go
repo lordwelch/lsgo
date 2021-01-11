@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"git.narnian.us/lordwelch/lsgo"
 	_ "git.narnian.us/lordwelch/lsgo/lsb"
@@ -40,7 +39,6 @@ func init() {
 }
 
 func main() {
-
 	for _, v := range flag.Args() {
 		fi, err := os.Stat(v)
 		if err != nil {
@@ -48,7 +46,6 @@ func main() {
 			os.Exit(1)
 		}
 		switch {
-
 		case !fi.IsDir():
 			err = openLSF(v)
 			if err != nil && !errors.As(err, &lsgo.HeaderError{}) {
@@ -131,14 +128,14 @@ func readLSF(filename string) (*lsgo.Resource, error) {
 		err  error
 	)
 	switch filepath.Ext(filename) {
-
 	case ".lsf", ".lsb":
 		var b []byte
 		fi, err = os.Stat(filename)
 		if err != nil {
 			return nil, err
 		}
-		// Arbitrary size, no lsf file should reach 100 MB (I haven't found one over 90 KB) and if you don't have 100 MB of ram free you shouldn't be using this
+		// Arbitrary size, no lsf file should reach 100 MB (I haven't found one over 90 KB)
+		// and if you don't have 100 MB of ram free you shouldn't be using this
 		if fi.Size() <= 100*1024*1024 {
 			b, err = ioutil.ReadFile(filename)
 			if err != nil {

@@ -1,0 +1,37 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"LSP":
+		{
+			"gopls":
+			{
+				"settings":
+				{
+					"gopls":
+					{
+						"usePlaceholders": true,
+						"buildFlags":
+						[
+							"-tags",
+							"noasm"
+						],
+						"directoryFilters":
+						[
+							"third_party"
+						],
+						"analyses": {
+							"shadow": true,
+							"unusedparams": true
+						}
+					}
+				}
+			}
+		}
+	}
+}

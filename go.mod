@@ -2,7 +2,7 @@ module git.narnian.us/lordwelch/lsgo
 
 go 1.15
 
-replace github.com/pierrec/lz4/v4 v4.1.3 => ./lz4
+replace github.com/pierrec/lz4/v4 v4.1.3 => ./third_party/lz4
 
 require (
 	github.com/go-kit/kit v0.10.0

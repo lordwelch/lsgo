@@ -64,7 +64,7 @@ func sniff(r io.ReadSeeker) format {
 			b = make([]byte, len(f.magic))
 		}
 		_, err = r.Read(b)
-		r.Seek(0, io.SeekStart)
+		_, _ = r.Seek(0, io.SeekStart)
 		if err == nil && match(f.magic, b) {
 			return f
 		}

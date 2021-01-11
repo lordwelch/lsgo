@@ -108,7 +108,6 @@ func (v Vec) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 		switch i {
 		case 0:
 			name.Local = "x"
-			// start.Name = "float1"
 		case 1:
 			name.Local = "y"
 			start.Name.Local = "float2"

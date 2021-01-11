@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/kit/log"
 )
 
-var LSFSignature = [4]byte{0x4C, 0x53, 0x4F, 0x46}
+const Signature = "LSOF"
 
-type LSFHeader struct {
+type Header struct {
 	// LSOF file signature
 	Signature [4]byte
 
@@ -46,7 +46,6 @@ type LSFHeader struct {
 
 	// Compressed size of the raw value buffer
 	ValuesSizeOnDisk uint32
-	// summary
 
 	// Uses the same format as packages (see BinUtils.MakeCompressionFlags)
 	CompressionFlags byte
@@ -59,7 +58,7 @@ type LSFHeader struct {
 	Extended uint32
 }
 
-func (lsfh *LSFHeader) Read(r io.ReadSeeker) error {
+func (h *Header) Read(r io.ReadSeeker) error {
 	var (
 		l   log.Logger
 		pos int64
@@ -67,157 +66,149 @@ func (lsfh *LSFHeader) Read(r io.ReadSeeker) error {
 		err error
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "header")
-	pos, err = r.Seek(0, io.SeekCurrent)
-	n, err = r.Read(lsfh.Signature[:])
+	pos, _ = r.Seek(0, io.SeekCurrent)
+	n, err = r.Read(h.Signature[:])
 	if err != nil {
 		return err
 	}
-	l.Log("member", "Signature", "read", n, "start position", pos, "value", string(lsfh.Signature[:]))
+	l.Log("member", "Signature", "read", n, "start position", pos, "value", string(h.Signature[:]))
 	pos += int64(n)
-	err = binary.Read(r, binary.LittleEndian, &lsfh.Version)
+	err = binary.Read(r, binary.LittleEndian, &h.Version)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "Version", "read", n, "start position", pos, "value", lsfh.Version)
+	l.Log("member", "Version", "read", n, "start position", pos, "value", h.Version)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.EngineVersion)
+	err = binary.Read(r, binary.LittleEndian, &h.EngineVersion)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "EngineVersion", "read", n, "start position", pos, "value", fmt.Sprintf("%d.%d.%d.%d", (lsfh.EngineVersion&0xf0000000)>>28, (lsfh.EngineVersion&0xf000000)>>24, (lsfh.EngineVersion&0xff0000)>>16, (lsfh.EngineVersion&0xffff)))
+	l.Log("member", "EngineVersion", "read", n, "start position", pos, "value", fmt.Sprintf("%d.%d.%d.%d", (h.EngineVersion&0xf0000000)>>28, (h.EngineVersion&0xf000000)>>24, (h.EngineVersion&0xff0000)>>16, (h.EngineVersion&0xffff)))
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.StringsUncompressedSize)
+	err = binary.Read(r, binary.LittleEndian, &h.StringsUncompressedSize)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "StringsUncompressedSize", "read", n, "start position", pos, "value", lsfh.StringsUncompressedSize)
+	l.Log("member", "StringsUncompressedSize", "read", n, "start position", pos, "value", h.StringsUncompressedSize)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.StringsSizeOnDisk)
+	err = binary.Read(r, binary.LittleEndian, &h.StringsSizeOnDisk)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "StringsSizeOnDisk", "read", n, "start position", pos, "value", lsfh.StringsSizeOnDisk)
+	l.Log("member", "StringsSizeOnDisk", "read", n, "start position", pos, "value", h.StringsSizeOnDisk)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.NodesUncompressedSize)
+	err = binary.Read(r, binary.LittleEndian, &h.NodesUncompressedSize)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "NodesUncompressedSize", "read", n, "start position", pos, "value", lsfh.NodesUncompressedSize)
+	l.Log("member", "NodesUncompressedSize", "read", n, "start position", pos, "value", h.NodesUncompressedSize)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.NodesSizeOnDisk)
+	err = binary.Read(r, binary.LittleEndian, &h.NodesSizeOnDisk)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "NodesSizeOnDisk", "read", n, "start position", pos, "value", lsfh.NodesSizeOnDisk)
+	l.Log("member", "NodesSizeOnDisk", "read", n, "start position", pos, "value", h.NodesSizeOnDisk)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.AttributesUncompressedSize)
+	err = binary.Read(r, binary.LittleEndian, &h.AttributesUncompressedSize)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "AttributesUncompressedSize", "read", n, "start position", pos, "value", lsfh.AttributesUncompressedSize)
+	l.Log("member", "AttributesUncompressedSize", "read", n, "start position", pos, "value", h.AttributesUncompressedSize)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.AttributesSizeOnDisk)
+	err = binary.Read(r, binary.LittleEndian, &h.AttributesSizeOnDisk)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "AttributesSizeOnDisk", "read", n, "start position", pos, "value", lsfh.AttributesSizeOnDisk)
+	l.Log("member", "AttributesSizeOnDisk", "read", n, "start position", pos, "value", h.AttributesSizeOnDisk)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.ValuesUncompressedSize)
+	err = binary.Read(r, binary.LittleEndian, &h.ValuesUncompressedSize)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "ValuesUncompressedSize", "read", n, "start position", pos, "value", lsfh.ValuesUncompressedSize)
+	l.Log("member", "ValuesUncompressedSize", "read", n, "start position", pos, "value", h.ValuesUncompressedSize)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.ValuesSizeOnDisk)
+	err = binary.Read(r, binary.LittleEndian, &h.ValuesSizeOnDisk)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "ValuesSizeOnDisk", "read", n, "start position", pos, "value", lsfh.ValuesSizeOnDisk)
+	l.Log("member", "ValuesSizeOnDisk", "read", n, "start position", pos, "value", h.ValuesSizeOnDisk)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.CompressionFlags)
+	err = binary.Read(r, binary.LittleEndian, &h.CompressionFlags)
 	n = 1
 	if err != nil {
 		return err
 	}
-	l.Log("member", "CompressionFlags", "read", n, "start position", pos, "value", lsfh.CompressionFlags)
+	l.Log("member", "CompressionFlags", "read", n, "start position", pos, "value", h.CompressionFlags)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.Unknown2)
+	err = binary.Read(r, binary.LittleEndian, &h.Unknown2)
 	n = 1
 	if err != nil {
 		return err
 	}
-	l.Log("member", "Unknown2", "read", n, "start position", pos, "value", lsfh.Unknown2)
+	l.Log("member", "Unknown2", "read", n, "start position", pos, "value", h.Unknown2)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.Unknown3)
+	err = binary.Read(r, binary.LittleEndian, &h.Unknown3)
 	n = 2
 	if err != nil {
 		return err
 	}
-	l.Log("member", "Unknown3", "read", n, "start position", pos, "value", lsfh.Unknown3)
+	l.Log("member", "Unknown3", "read", n, "start position", pos, "value", h.Unknown3)
 	pos += int64(n)
 
-	err = binary.Read(r, binary.LittleEndian, &lsfh.Extended)
+	err = binary.Read(r, binary.LittleEndian, &h.Extended)
 	n = 4
 	if err != nil {
 		return err
 	}
-	l.Log("member", "Extended", "read", n, "start position", pos, "value", lsfh.Extended)
+	l.Log("member", "Extended", "read", n, "start position", pos, "value", h.Extended)
 	pos += int64(n)
 
-	if !lsfh.IsCompressed() {
-		lsfh.NodesSizeOnDisk = lsfh.NodesUncompressedSize
-		lsfh.AttributesSizeOnDisk = lsfh.AttributesUncompressedSize
-		lsfh.StringsSizeOnDisk = lsfh.StringsUncompressedSize
-		lsfh.ValuesSizeOnDisk = lsfh.ValuesUncompressedSize
+	if !h.IsCompressed() {
+		h.NodesSizeOnDisk = h.NodesUncompressedSize
+		h.AttributesSizeOnDisk = h.AttributesUncompressedSize
+		h.StringsSizeOnDisk = h.StringsUncompressedSize
+		h.ValuesSizeOnDisk = h.ValuesUncompressedSize
 	}
 	return nil
 }
 
-func (lsfh LSFHeader) IsCompressed() bool {
-	return lsgo.CompressionFlagsToMethod(lsfh.CompressionFlags) != lsgo.CMNone && lsgo.CompressionFlagsToMethod(lsfh.CompressionFlags) != lsgo.CMInvalid
+func (h Header) IsCompressed() bool {
+	return lsgo.CompressionFlagsToMethod(h.CompressionFlags) != lsgo.CMNone && lsgo.CompressionFlagsToMethod(h.CompressionFlags) != lsgo.CMInvalid
 }
 
 type NodeEntry struct {
 	Long bool
 
-	// summary
-
 	// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
 	NameHashTableIndex uint32
-
-	// summary
 
 	// (-1: node has no attributes)
 	FirstAttributeIndex int32
 
-	// summary
-
 	// (-1: this node is a root region)
 	ParentIndex int32
-
-	// summary
 
 	// (-1: this is the last node)
 	NextSiblingIndex int32
@@ -238,11 +229,10 @@ func (ne *NodeEntry) readShort(r io.ReadSeeker) error {
 		n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "short node")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 	err = binary.Read(r, binary.LittleEndian, &ne.NameHashTableIndex)
 	n = 4
 	if err != nil {
-		// logger.Println(err, "ne.NameHashTableIndex", ne.NameHashTableIndex)
 		return err
 	}
 	l.Log("member", "NameHashTableIndex", "read", n, "start position", pos, "value", strconv.Itoa(ne.NameIndex())+" "+strconv.Itoa(ne.NameOffset()))
@@ -251,7 +241,6 @@ func (ne *NodeEntry) readShort(r io.ReadSeeker) error {
 	err = binary.Read(r, binary.LittleEndian, &ne.FirstAttributeIndex)
 	n = 4
 	if err != nil {
-		// logger.Println(err, "ne.FirstAttributeIndex", ne.FirstAttributeIndex)
 		return err
 	}
 	l.Log("member", "NameHashTableIndex", "read", n, "start position", pos, "value", ne.FirstAttributeIndex)
@@ -260,7 +249,6 @@ func (ne *NodeEntry) readShort(r io.ReadSeeker) error {
 	err = binary.Read(r, binary.LittleEndian, &ne.ParentIndex)
 	n = 4
 	if err != nil {
-		// logger.Println(err, "ne.ParentIndex", ne.ParentIndex)
 		return err
 	}
 	l.Log("member", "NameHashTableIndex", "read", n, "start position", pos, "value", ne.ParentIndex)
@@ -276,7 +264,7 @@ func (ne *NodeEntry) readLong(r io.ReadSeeker) error {
 		n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "long node")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 	err = binary.Read(r, binary.LittleEndian, &ne.NameHashTableIndex)
 	n = 4
 	if err != nil {
@@ -322,7 +310,6 @@ func (ne NodeEntry) NameOffset() int {
 
 // Processed node information for a node in the LSF file
 type NodeInfo struct {
-	// summary
 
 	// (-1: this node is a root region)
 	ParentIndex int
@@ -333,8 +320,6 @@ type NodeInfo struct {
 	// Offset in hash chain
 	NameOffset int
 
-	// summary
-
 	// (-1: node has no attributes)
 	FirstAttributeIndex int
 }
@@ -342,22 +327,15 @@ type NodeInfo struct {
 // attribute extension in the LSF file
 type AttributeEntry struct {
 	Long bool
-	// summary
 
 	// (16-bit MSB: index into name hash table, 16-bit LSB: offset in hash chain)
 	NameHashTableIndex uint32
 
-	// summary
-
 	// 26-bit MSB: Length of this attribute
 	TypeAndLength uint32
 
-	// summary
-
 	// Note: These indexes are assigned seemingly arbitrarily, and are not necessarily indices into the node list
 	NodeIndex int32
-
-	// summary
 
 	// Note: These indexes are assigned seemingly arbitrarily, and are not necessarily indices into the node list
 	NextAttributeIndex int32
@@ -381,7 +359,7 @@ func (ae *AttributeEntry) readShort(r io.ReadSeeker) error {
 		n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "short attribute")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &ae.NameHashTableIndex)
 	n = 4
@@ -418,7 +396,7 @@ func (ae *AttributeEntry) readLong(r io.ReadSeeker) error {
 		n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "long attribute")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &ae.NameHashTableIndex)
 	n = 4
@@ -492,7 +470,6 @@ type AttributeInfo struct {
 
 	// Absolute position of attribute data in the values section
 	DataOffset uint
-	// summary
 
 	// (-1: this is the last attribute)
 	NextAttributeIndex int
@@ -510,7 +487,7 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 		n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "names")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	err = binary.Read(r, binary.LittleEndian, &numHashEntries)
 	n = 4
@@ -522,11 +499,13 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 
 	names = make([][]string, int(numHashEntries))
 	for i := range names {
-
 		var numStrings uint16
 
 		err = binary.Read(r, binary.LittleEndian, &numStrings)
 		n = 4
+		if err != nil {
+			return nil, err
+		}
 		l.Log("member", "numStrings", "read", n, "start position", pos, "value", numStrings)
 		pos += int64(n)
 
@@ -554,16 +533,13 @@ func ReadNames(r io.ReadSeeker) ([][]string, error) {
 			pos += int64(n)
 
 			hash[x] = string(name)
-
 		}
 		names[i] = hash
-
 	}
 	return names, nil
 }
 
 func readNodeInfo(r io.ReadSeeker, longNodes bool) ([]NodeInfo, error) {
-	// Console.WriteLine(" ----- DUMP OF NODE TABLE -----");
 	var (
 		nodes []NodeInfo
 		err   error
@@ -572,7 +548,6 @@ func readNodeInfo(r io.ReadSeeker, longNodes bool) ([]NodeInfo, error) {
 
 	for err == nil {
 		var node NodeInfo
-		// var pos = lsfr.Position;
 
 		item := &NodeEntry{Long: longNodes}
 		err = item.Read(r)
@@ -581,11 +556,6 @@ func readNodeInfo(r io.ReadSeeker, longNodes bool) ([]NodeInfo, error) {
 		node.NameIndex = item.NameIndex()
 		node.NameOffset = item.NameOffset()
 		node.ParentIndex = int(item.ParentIndex)
-		// Console.WriteLine(String.Format(
-		//     "{0}: {1} @ {2:X} (parent {3}, firstAttribute {4})",
-		//     index, Names[node.NameIndex][node.NameOffset], pos, node.ParentIndex,
-		//     node.FirstAttributeIndex
-		// ));
 
 		nodes = append(nodes, node)
 		index++
@@ -613,7 +583,6 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 			break
 		}
 
-		// pretty.Log( attribute)
 		if long {
 			dataOffset = uint(attribute.Offset)
 			nextAttrIndex = int(attribute.NextAttributeIndex)
@@ -630,7 +599,6 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 
 		if !long {
 			// get index of previous attribute for node
-
 			if indexOfLastAttr, ok := prevAttributeRefs[int(attribute.NodeIndex)]; ok { // previous attribute exists for current node set the next attribute index for the previous node to this attribute
 				attributes[indexOfLastAttr].NextAttributeIndex = index
 			}
@@ -667,7 +635,7 @@ func readAttributeInfo(r io.ReadSeeker, long bool) []AttributeInfo {
 	// }
 }
 
-func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
+func Read(r io.ReadSeeker) (lsgo.Resource, error) {
 	var (
 		err error
 
@@ -689,13 +657,13 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 		// n   int
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "file")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "header", "start position", pos)
 
-	hdr := &LSFHeader{}
+	hdr := &Header{}
 	err = hdr.Read(r)
-	if err != nil || (hdr.Signature != LSFSignature) {
-		return lsgo.Resource{}, lsgo.HeaderError{Expected: LSFSignature[:], Got: hdr.Signature[:]}
+	if err != nil || (string(hdr.Signature[:]) != Signature) {
+		return lsgo.Resource{}, lsgo.HeaderError{Expected: Signature, Got: hdr.Signature[:]}
 	}
 
 	if hdr.Version < lsgo.VerInitial || hdr.Version > lsgo.MaxVersion {
@@ -704,7 +672,7 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 
 	isCompressed := lsgo.CompressionFlagsToMethod(hdr.CompressionFlags) != lsgo.CMNone && lsgo.CompressionFlagsToMethod(hdr.CompressionFlags) != lsgo.CMInvalid
 
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "LSF names", "start position", pos)
 	if hdr.StringsSizeOnDisk > 0 || hdr.StringsUncompressedSize > 0 {
 		uncompressed := lsgo.LimitReadSeeker(r, int64(hdr.StringsSizeOnDisk))
@@ -719,13 +687,12 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 		// }
 
 		names, err = ReadNames(uncompressed)
-		// pretty.Log(len(names), names)
 		if err != nil && err != io.EOF {
 			return lsgo.Resource{}, err
 		}
 	}
 
-	npos, err = r.Seek(0, io.SeekCurrent)
+	npos, _ = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "LSF nodes", "start position", npos)
 	if npos != pos+int64(hdr.StringsSizeOnDisk) {
 		l.Log("member", "LSF nodes", "msg", "seeking to correct offset", "current", npos, "wanted", pos+int64(hdr.StringsSizeOnDisk))
@@ -746,14 +713,12 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 
 		longNodes := hdr.Version >= lsgo.VerExtendedNodes && hdr.Extended == 1
 		nodeInfo, err = readNodeInfo(uncompressed, longNodes)
-		// pretty.Log(err, nodeInfo)
-		// logger.Printf("region 1 name: %v", names[nodeInfo[0].NameIndex])
 		if err != nil && err != io.EOF {
 			return lsgo.Resource{}, err
 		}
 	}
 
-	npos, err = r.Seek(0, io.SeekCurrent)
+	npos, _ = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "LSF attributes", "start position", npos)
 	if npos != pos+int64(hdr.NodesSizeOnDisk) {
 		l.Log("msg", "seeking to correct offset", "current", npos, "wanted", pos+int64(hdr.NodesSizeOnDisk))
@@ -774,11 +739,9 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 
 		longAttributes := hdr.Version >= lsgo.VerExtendedNodes && hdr.Extended == 1
 		attributeInfo = readAttributeInfo(uncompressed, longAttributes)
-		// logger.Printf("attribute 1 name: %v", names[attributeInfo[0].NameIndex])
-		// pretty.Log(attributeInfo)
 	}
 
-	npos, err = r.Seek(0, io.SeekCurrent)
+	npos, _ = r.Seek(0, io.SeekCurrent)
 	l.Log("member", "LSF values", "start position", npos)
 	if npos != pos+int64(hdr.AttributesSizeOnDisk) {
 		l.Log("msg", "seeking to correct offset", "current", npos, "wanted", pos+int64(hdr.AttributesSizeOnDisk))
@@ -810,7 +773,6 @@ func ReadLSF(r io.ReadSeeker) (lsgo.Resource, error) {
 	res.Metadata.Revision = (hdr.EngineVersion & 0xff0000) >> 16
 	res.Metadata.Build = (hdr.EngineVersion & 0xffff)
 
-	// pretty.Log(res)
 	return res, nil
 }
 
@@ -820,8 +782,6 @@ func ReadRegions(r io.ReadSeeker, valueStart int64, names [][]string, nodeInfo [
 		if nodeInfo.ParentIndex == -1 {
 			region, err := ReadNode(r, valueStart, nodeInfo, names, attributeInfo, version, engineVersion)
 
-			// pretty.Log(err, region)
-
 			region.RegionName = region.Name
 			NodeInstances = append(NodeInstances, &region)
 
@@ -830,8 +790,6 @@ func ReadRegions(r io.ReadSeeker, valueStart int64, names [][]string, nodeInfo [
 			}
 		} else {
 			node, err := ReadNode(r, valueStart, nodeInfo, names, attributeInfo, version, engineVersion)
-
-			// pretty.Log(err, node)
 
 			node.Parent = NodeInstances[nodeInfo.ParentIndex]
 			NodeInstances = append(NodeInstances, &node)
@@ -855,7 +813,7 @@ func ReadNode(r io.ReadSeeker, valueStart int64, ni NodeInfo, names [][]string, 
 		pos int64
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "node")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	node.Name = names[ni.NameIndex][ni.NameOffset]
 
@@ -879,8 +837,6 @@ func ReadNode(r io.ReadSeeker, valueStart int64, ni NodeInfo, names [][]string, 
 			return node, err
 		}
 		index = attribute.NextAttributeIndex
-
-		// Console.WriteLine(String.Format("    {0:X}: {1} ({2})", attribute.DataOffset, names[attribute.NameIndex][attribute.NameOffset], value));
 	}
 	return node, nil
 }
@@ -900,7 +856,7 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt lsgo.DataType, length uin
 		pos int64
 	)
 	l = log.With(lsgo.Logger, "component", "LS converter", "file type", "lsf", "part", "attribute")
-	pos, err = r.Seek(0, io.SeekCurrent)
+	pos, _ = r.Seek(0, io.SeekCurrent)
 
 	switch dt {
 	case lsgo.DTString, lsgo.DTPath, lsgo.DTFixedString, lsgo.DTLSString, lsgo.DTWString, lsgo.DTLSWString:
@@ -950,5 +906,5 @@ func ReadLSFAttribute(r io.ReadSeeker, name string, dt lsgo.DataType, length uin
 }
 
 func init() {
-	lsgo.RegisterFormat("lsf", "LSOF", ReadLSF)
+	lsgo.RegisterFormat("lsf", Signature, Read)
 }
