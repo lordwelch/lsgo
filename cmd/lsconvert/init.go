@@ -53,7 +53,7 @@ func locateLSLIB() string {
 	folderName := "ExportTool-*"
 	if runtime.GOOS == "windows" {
 		for _, v := range "cdefgh" {
-			for _, vv := range []string{`:\Program Files*\*\`, `:\Program Files*\*\`, `:\app*\`, `:\`} {
+			for _, vv := range []string{`:\Program Files*\*\`, `:\app*\`, `:\`} {
 				paths, err := filepath.Glob(filepath.Join(string(v)+vv, folderName))
 				if err != nil {
 					panic(err)
@@ -73,10 +73,31 @@ func locateLSLIB() string {
 	return divine
 }
 
+func checkPaths() string {
+	var searchPath []string
+	folderName := `Baldurs Gate 3\bin\`
+	if runtime.GOOS == "windows" {
+		for _, v := range "cdefgh" {
+			for _, vv := range []string{`:\Program Files*\*\`, `:\Program Files*\GOG Galaxy\Games\`, `:\GOG Galaxy\Games\`, `:\GOG Games\`, `:\app*\`, `:\`} {
+				paths, err := filepath.Glob(filepath.Join(string(v)+vv, folderName))
+				if err != nil {
+					panic(err)
+				}
+				searchPath = append(searchPath, paths...)
+			}
+		}
+	}
+	bg3, _ := ie.LookPath("bg3.exe", strings.Join(searchPath, string(os.PathListSeparator)))
+	return strings.TrimSuffix(bg3, `\bin\bg3.exe`)
+}
+
 func locateBG3() string {
 	installPath := initFlags.BG3Path
 	if installPath == "" {
 		installPath = checkRegistry()
+	}
+	if installPath == "" {
+		installPath = checkPaths()
 	}
 	return installPath
 }
