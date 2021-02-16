@@ -146,10 +146,9 @@ func (d *Download) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(x.ID, &i); err != nil {
 		if err := json.Unmarshal(x.ID, &d.ID); err != nil {
 			return err
-		} else {
-			return nil
 		}
-		return err
+		return nil
+
 	}
 	d.ID = i.String()
 	return nil

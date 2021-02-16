@@ -31,12 +31,24 @@ func (c Change) str(indent int) string {
 	for _, v := range c.Sub {
 		s.WriteString(v.str(indent + 1))
 	}
-	// s.WriteRune('\n')
 	return s.String()
 }
 
 func (c Change) String() string {
 	return c.str(0)
+}
+
+func (c Change) FindChange(version string) *Change {
+	if strings.Contains(c.Title, version) {
+		return &c
+	}
+	for _, v := range c.Sub {
+		cc := v.FindChange(version)
+		if cc != nil {
+			return cc
+		}
+	}
+	return nil
 }
 
 func debug(f ...interface{}) {
@@ -200,7 +212,7 @@ func ParseChangelog(ch, title string) (Change, error) {
 	return v, nil
 }
 
-func getGOGInfo(id string) (GOGalaxy, error) {
+func RetrieveGOGInfo(id string) (GOGalaxy, error) {
 	var (
 		r    *http.Response
 		err  error
