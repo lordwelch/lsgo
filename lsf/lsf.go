@@ -678,7 +678,10 @@ func Read(r io.ReadSeeker) (lsgo.Resource, error) {
 		uncompressed := lsgo.LimitReadSeeker(r, int64(hdr.StringsSizeOnDisk))
 
 		if isCompressed {
-			uncompressed = lsgo.Decompress(uncompressed, int(hdr.StringsUncompressedSize), hdr.CompressionFlags, false)
+			uncompressed, err = lsgo.Decompress(uncompressed, int(hdr.StringsUncompressedSize), hdr.CompressionFlags, false)
+			if err != nil {
+				return lsgo.Resource{}, fmt.Errorf("decompressing LSF name failed: %w", err)
+			}
 		}
 
 		// using (var nodesFile = new FileStream("names.bin", FileMode.Create, FileAccess.Write))
@@ -703,7 +706,10 @@ func Read(r io.ReadSeeker) (lsgo.Resource, error) {
 	if hdr.NodesSizeOnDisk > 0 || hdr.NodesUncompressedSize > 0 {
 		uncompressed := lsgo.LimitReadSeeker(r, int64(hdr.NodesSizeOnDisk))
 		if isCompressed {
-			uncompressed = lsgo.Decompress(uncompressed, int(hdr.NodesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			uncompressed, err = lsgo.Decompress(uncompressed, int(hdr.NodesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			if err != nil {
+				return lsgo.Resource{}, fmt.Errorf("decompressing LSF nodes failed: %w", err)
+			}
 		}
 
 		// using (var nodesFile = new FileStream("nodes.bin", FileMode.Create, FileAccess.Write))
@@ -729,7 +735,10 @@ func Read(r io.ReadSeeker) (lsgo.Resource, error) {
 	if hdr.AttributesSizeOnDisk > 0 || hdr.AttributesUncompressedSize > 0 {
 		var uncompressed io.ReadSeeker = lsgo.LimitReadSeeker(r, int64(hdr.AttributesSizeOnDisk))
 		if isCompressed {
-			uncompressed = lsgo.Decompress(uncompressed, int(hdr.AttributesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			uncompressed, err = lsgo.Decompress(uncompressed, int(hdr.AttributesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			if err != nil {
+				return lsgo.Resource{}, fmt.Errorf("decompressing LSF attributes failed: %w", err)
+			}
 		}
 
 		// using (var attributesFile = new FileStream("attributes.bin", FileMode.Create, FileAccess.Write))
@@ -752,7 +761,10 @@ func Read(r io.ReadSeeker) (lsgo.Resource, error) {
 	var uncompressed io.ReadSeeker = lsgo.LimitReadSeeker(r, int64(hdr.ValuesSizeOnDisk))
 	if hdr.ValuesSizeOnDisk > 0 || hdr.ValuesUncompressedSize > 0 {
 		if isCompressed {
-			uncompressed = lsgo.Decompress(r, int(hdr.ValuesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			uncompressed, err = lsgo.Decompress(r, int(hdr.ValuesUncompressedSize), hdr.CompressionFlags, hdr.Version >= lsgo.VerChunkedCompress)
+			if err != nil {
+				return lsgo.Resource{}, fmt.Errorf("decompressing LSF values failed: %w", err)
+			}
 		}
 	}
 

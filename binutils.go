@@ -82,18 +82,18 @@ func MakeCompressionFlags(method CompressionMethod, level CompressionLevel) int 
 	return flags | int(level)
 }
 
-func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byte, chunked bool) io.ReadSeeker {
+func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byte, chunked bool) (io.ReadSeeker, error) {
 	switch CompressionMethod(compressionFlags & 0x0f) {
 	case CMNone:
 		if v, ok := compressed.(io.ReadSeeker); ok {
-			return v
+			return v, nil
 		}
-		panic(errors.New("compressed must be an io.ReadSeeker if there is no compression"))
+		return nil, errors.New("compressed must be an io.ReadSeeker if there is no compression")
 
 	case CMZlib:
 		zr, _ := zlib.NewReader(compressed)
 		v, _ := ioutil.ReadAll(zr)
-		return bytes.NewReader(v)
+		return bytes.NewReader(v), nil
 
 	case CMLZ4:
 		if chunked {
@@ -101,21 +101,21 @@ func Decompress(compressed io.Reader, uncompressedSize int, compressionFlags byt
 			p := make([]byte, uncompressedSize)
 			_, err := zr.Read(p)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
-			return bytes.NewReader(p)
+			return bytes.NewReader(p), nil
 		}
 		src, _ := ioutil.ReadAll(compressed)
 		dst := make([]byte, uncompressedSize*2)
 		_, err := lz4.UncompressBlock(src, dst)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		return bytes.NewReader(dst)
+		return bytes.NewReader(dst), nil
 
 	default:
-		panic(fmt.Errorf("no decompressor found for this format: %v", compressionFlags))
+		return nil, fmt.Errorf("no decompressor found for this format: %v", compressionFlags)
 	}
 }
 
