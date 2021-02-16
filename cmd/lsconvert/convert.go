@@ -20,47 +20,46 @@ import (
 	"github.com/kr/pretty"
 )
 
-var (
-	convertFS    = flag.NewFlagSet("convert", flag.ExitOnError)
-	convertFlags = struct {
-		write         bool
-		printXML      bool
-		printResource bool
-		recurse       bool
-		logging       bool
-		parts         string
-	}{}
-)
+type convertFlags struct {
+	write         bool
+	printXML      bool
+	printResource bool
+	recurse       bool
+	logging       bool
+	parts         string
+}
 
-func convert(arguments []string) {
-	convertFS.BoolVar(&convertFlags.write, "w", false, "Replace the file with XML data")
-	convertFS.BoolVar(&convertFlags.printXML, "x", false, "Print XML to stdout")
-	convertFS.BoolVar(&convertFlags.printResource, "R", false, "Print the resource struct to stderr")
-	convertFS.BoolVar(&convertFlags.recurse, "r", false, "Recurse into directories")
-	convertFS.BoolVar(&convertFlags.logging, "l", false, "Enable logging to stderr")
-	convertFS.StringVar(&convertFlags.parts, "p", "", "Parts to filter logging for, comma separated")
+func convert(arguments ...string) error {
+	var (
+		convertFS = flag.NewFlagSet("convert", flag.ExitOnError)
+		cvFlags   = convertFlags{}
+	)
+	convertFS.BoolVar(&cvFlags.write, "w", false, "Replace the file with XML data")
+	convertFS.BoolVar(&cvFlags.printXML, "x", false, "Print XML to stdout")
+	convertFS.BoolVar(&cvFlags.printResource, "R", false, "Print the resource struct to stderr")
+	convertFS.BoolVar(&cvFlags.recurse, "r", false, "Recurse into directories")
+	convertFS.BoolVar(&cvFlags.logging, "l", false, "Enable logging to stderr")
+	convertFS.StringVar(&cvFlags.parts, "p", "", "Parts to filter logging for, comma separated")
 	convertFS.Parse(arguments)
-	if convertFlags.logging {
+	if cvFlags.logging {
 		lsgo.Logger = lsgo.NewFilter(map[string][]string{
-			"part": strings.Split(convertFlags.parts, ","),
+			"part": strings.Split(cvFlags.parts, ","),
 		}, log.NewLogfmtLogger(os.Stderr))
 	}
 
 	for _, v := range convertFS.Args() {
 		fi, err := os.Stat(v)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return err
 		}
 		switch {
 		case !fi.IsDir():
-			err = openLSF(v)
+			err = cvFlags.openLSF(v)
 			if err != nil && !errors.As(err, &lsgo.HeaderError{}) {
-				fmt.Fprintln(os.Stderr, err)
-				os.Exit(1)
+				return err
 			}
 
-		case convertFlags.recurse:
+		case cvFlags.recurse:
 			_ = filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return nil
@@ -71,21 +70,21 @@ func convert(arguments []string) {
 					}
 					return nil
 				}
-				err = openLSF(path)
-				if err != nil && !errors.As(err, &lsgo.HeaderError{}) {
+				err = cvFlags.openLSF(path)
+				if err != nil && !errors.Is(err, lsgo.ErrFormat) {
 					fmt.Fprintln(os.Stderr, err)
 				}
 				return nil
 			})
 
 		default:
-			fmt.Fprintf(os.Stderr, "lsconvert: %s: Is a directory\n", v)
-			os.Exit(1)
+			return fmt.Errorf("lsconvert: %s: Is a directory\n", v)
 		}
 	}
+	return nil
 }
 
-func openLSF(filename string) error {
+func (cf *convertFlags) openLSF(filename string) error {
 	var (
 		l   *lsgo.Resource
 		err error
@@ -99,21 +98,21 @@ func openLSF(filename string) error {
 	if err != nil {
 		return fmt.Errorf("reading LSF file %s failed: %w", filename, err)
 	}
-	if convertFlags.printResource {
+	if cf.printResource {
 		pretty.Log(l)
 	}
-	if convertFlags.printXML || convertFlags.write {
+	if cf.printXML || cf.write {
 		n, err = marshalXML(l)
 		if err != nil {
 			return fmt.Errorf("creating XML from LSF file %s failed: %w", filename, err)
 		}
 
-		if convertFlags.write {
+		if cf.write {
 			f, err = os.OpenFile(filename, os.O_TRUNC|os.O_RDWR, 0o666)
 			if err != nil {
 				return fmt.Errorf("writing XML from LSF file %s failed: %w", filename, err)
 			}
-		} else if convertFlags.printXML {
+		} else if cf.printXML {
 			f = os.Stdout
 		}
 
@@ -188,7 +187,7 @@ func readLSF(filename string) (*lsgo.Resource, error) {
 
 	l, _, err = lsgo.Decode(r)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding %q failed: %w", filename, err)
 	}
 	return &l, nil
 }
