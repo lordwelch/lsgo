@@ -4,10 +4,14 @@ go 1.15
 
 replace github.com/pierrec/lz4/v4 v4.1.3 => ./third_party/lz4
 
+replace github.com/jdferrell3/peinfo-go v0.0.0-20191128021257-cff0d8506fb1 => ./third_party/peinfo-go
+
 require (
 	github.com/go-git/go-git/v5 v5.2.0
 	github.com/go-kit/kit v0.10.0
 	github.com/google/uuid v1.1.4
+	github.com/hashicorp/go-multierror v1.1.0
+	github.com/jdferrell3/peinfo-go v0.0.0-20191128021257-cff0d8506fb1
 	github.com/kr/pretty v0.2.1
 	github.com/pierrec/lz4/v4 v4.1.3
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a

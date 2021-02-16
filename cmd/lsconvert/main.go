@@ -1,15 +1,43 @@
 package main
 
-import "flag"
+import (
+	"fmt"
+	"os"
+)
 
 func main() {
-	flag.Parse()
-	switch flag.Arg(0) {
+	// flag.Parse()
+	arg := ""
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+	switch arg {
 	case "convert":
-		convert(flag.Args()[1:])
+		err := convert(os.Args[1:]...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "init":
-		initRepository(flag.Args()[1:])
+		p := "."
+		if len(os.Args) > 2 {
+			p = os.Args[2]
+		}
+		repo, err := openRepository(p)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		err = repo.Init()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
-		convert(flag.Args())
+		err := convert(os.Args[1:]...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 }
